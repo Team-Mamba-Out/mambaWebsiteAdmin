@@ -7,18 +7,18 @@
       <pan-thumb :image="avatar" class="panThumb" />
       <mallki class-name="mallki-text" text="Administrator" />
       <div style="padding-top:35px;" class="progress-item">
-        <span>Name</span>
+        <span>Name: {{ userInfo.name }}</span>
       </div>
       <div class="progress-item">
-        <span>Uid</span>
+        <span>Uid: {{ userInfo.uid }}</span>
 
       </div>
       <div class="progress-item">
-        <span>Email</span>
+        <span>Email: {{ userInfo.email }}</span>
 
       </div>
       <div class="progress-item">
-        <span>Phone</span>
+        <span>Phone: {{ userInfo.phone }}</span>
 
       </div>
     </div>
@@ -44,9 +44,11 @@ export default {
   },
   data() {
     return {
-      statisticsData: {
-        article_count: 1024,
-        pageviews_count: 1024
+      userInfo: {
+      name: "John Doe",
+      uid: "123456",
+      email: "johndoe@example.com",
+      phone: "+1234567890"
       }
     }
   },

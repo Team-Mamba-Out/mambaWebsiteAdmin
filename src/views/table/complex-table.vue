@@ -1,12 +1,9 @@
 <template>
   <div class="app-container">
     <div class="filter-container">
-      <el-input v-model="listQuery.OrderId" placeholder="Order_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
-      <el-input v-model="listQuery.RoomId" placeholder="Room_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
-      <el-input v-model="listQuery.User" placeholder="User" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
-      <el-select v-model="listQuery.sort" style="width: 140px" class="filter-item" @change="handleFilter">
-        <el-option v-for="item in sortOptions" :key="item.key" :label="item.label" :value="item.key" />
-      </el-select>
+      <el-input v-model="listQuery.Order_Id" placeholder="Order_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
+      <el-input v-model="listQuery.Room_Id" placeholder="Room_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
+      <el-input v-model="listQuery.User_Id" placeholder="User_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
       <el-button v-waves class="filter-item" type="primary" icon="el-icon-search" @click="handleFilter">
         Search
       </el-button>
@@ -21,46 +18,44 @@
     <el-table
       :key="tableKey"
       v-loading="listLoading"
-      :data="list"
-      border
-      fit
-      highlight-current-row
+      :data="filterList"
+      fit                                                                                   
       style="width: 1390px;"
       @sort-change="sortChange"
     >
-      <el-table-column label="Order_Id" prop="id" align="center" width="110" :class-name="getSortClass('id')">
+      <el-table-column label="Order Id" prop="id" align="center" width="110">
         <template slot-scope="{row}">
-          <span>{{ row.id }}</span> 
+          <span>{{ row.id }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="Record_Time" width="180px" align="center">
+      <el-table-column label="Record Time" width="180px" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.timestamp | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
+          <span>{{ row.record_time | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="Room_Id" width="120px" align="center">
+      <el-table-column label="Room Id" width="120px" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.author }}</span>
+          <span>{{ row.room_id }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="Room_Type" width="120px" align="center">
+      <el-table-column label="Room Type" width="150px" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.author }}</span>
+          <span>{{ row.room_type }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="User" width="130px" align="center">
+      <el-table-column label="User Id" width="130px" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.author }}</span>
+          <span>{{ row.user_id }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="Start_Time" width="180px" align="center">
+      <el-table-column label="Start Time" width="180px" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.timestamp | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
+          <span>{{ row.start_time | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="End_Time" width="180px" align="center">
+      <el-table-column label="End Time" width="180px" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.timestamp | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
+          <span>{{ row.end_time | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
         </template>
       </el-table-column>
       <el-table-column label="Status" class-name="status-col" width="120">
@@ -72,10 +67,7 @@
       </el-table-column>
       <el-table-column label="Actions" align="center" width="250" class-name="small-padding fixed-width">
         <template slot-scope="{row,$index}">
-          <el-button type="primary" size="mini" @click="handleUpdate(row)">
-            Edit
-          </el-button>
-          <el-button v-if="row.status!='deleted'" size="mini" type="danger" @click="handleDelete(row,$index)">
+          <el-button size="mini" type="danger" @click="handleDelete(row,$index)">
             Delete
           </el-button>
         </template>
@@ -86,22 +78,31 @@
 
     <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
       <el-form ref="dataForm" :rules="rules" :model="temp" label-position="left" label-width="70px" style="width: 400px; margin-left:50px;">
-        <el-form-item label="Date" prop="timestamp">
-          <el-date-picker v-model="temp.timestamp" type="datetime" placeholder="Please pick a date" />
+        <el-form-item label="Order Id" prop="id" label-width="120px">
+          <el-input v-model="temp.id" />
         </el-form-item>
-        <el-form-item label="Title" prop="title">
-          <el-input v-model="temp.title" />
+        <el-form-item label="Record Time" prop="record_time" label-width="120px">
+          <el-date-picker v-model="temp.record_time" type="datetime" placeholder="Please pick a time" />
         </el-form-item>
-        <el-form-item label="Status">
+        <el-form-item label="User Id" prop="user_id" label-width="120px">
+          <el-input v-model="temp.user_id" />
+        </el-form-item>
+        <el-form-item label="Room Id" prop="room_id" label-width="120px">
+          <el-input v-model="temp.room_id" />
+        </el-form-item>
+        <el-form-item label="Room Type" prop="room_type" label-width="120px">
+          <el-input v-model="temp.room_type" />
+        </el-form-item>
+        <el-form-item label="Start Time" prop="start_time" label-width="120px">
+          <el-date-picker v-model="temp.start_time" type="datetime" placeholder="Please pick a time" />
+        </el-form-item>
+        <el-form-item label="End Time" prop="end_time" label-width="120px">
+          <el-date-picker v-model="temp.end_time" type="datetime" placeholder="Please pick a time" />
+        </el-form-item>
+        <el-form-item label="Status" label-width="120px">
           <el-select v-model="temp.status" class="filter-item" placeholder="Please select">
             <el-option v-for="item in statusOptions" :key="item" :label="item" :value="item" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="Imp">
-          <el-rate v-model="temp.importance" :colors="['#99A9BF', '#F7BA2A', '#FF9900']" :max="3" style="margin-top:8px;" />
-        </el-form-item>
-        <el-form-item label="Remark">
-          <el-input v-model="temp.remark" :autosize="{ minRows: 2, maxRows: 4}" type="textarea" placeholder="Please input" />
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -113,24 +114,14 @@
         </el-button>
       </div>
     </el-dialog>
-
-    <el-dialog :visible.sync="dialogPvVisible" title="Reading statistics">
-      <el-table :data="pvData" border fit highlight-current-row style="width: 100%">
-        <el-table-column prop="key" label="Channel" />
-        <el-table-column prop="pv" label="Pv" />
-      </el-table>
-      <span slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="dialogPvVisible = false">Confirm</el-button>
-      </span>
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { fetchList, fetchPv, createArticle, updateArticle } from '@/api/article'
-import waves from '@/directive/waves' // waves directive
+import { createArticle } from '@/api/article'
+import waves from '@/directive/waves'
 import { parseTime } from '@/utils'
-import Pagination from '@/components/Pagination' // secondary package based on el-pagination
+import Pagination from '@/components/Pagination'
 
 export default {
   name: 'ComplexTable',
@@ -152,37 +143,39 @@ export default {
         draft: 'upcoming'
       }
       return textMap[status]
-    },
-
-    typeFilter(type) {
-      return calendarTypeKeyValue[type]
     }
   },
   data() {
     return {
-      tableKey: 0,
-      list: null,
-      total: 0,
-      listLoading: true,
+      total: 1,
       listQuery: {
+        Order_Id: '',
+        Room_Id: '',
+        User_Id: '',
         page: 1,
-        limit: 20,
-        importance: undefined,
-        title: undefined, 
-        type: undefined,
-        sort: '+id'
+        limit: 10
       },
-      importanceOptions: [1, 2, 3],
-      sortOptions: [{ label: 'ID Ascending', key: '+id' }, { label: 'ID Descending', key: '-id' }],
+      list: [
+        { id: '1001', record_time: '2025-03-01 07:00', room_id: 'R001', room_type: 'classroom', user_id: 'U001', start_time: '2025-03-01 09:00', end_time: '2025-03-01 12:00', status: 'published' },
+        { id: '1002', record_time: '2025-03-02 10:00', room_id: 'R002', room_type: 'conference room', user_id: 'U002', start_time: '2025-03-02 14:00', end_time: '2025-03-02 16:00', status: 'draft' },
+        { id: '1003', record_time: '2025-03-03 8:30', room_id: 'R003', room_type: 'conference room', user_id: 'U003', start_time: '2025-03-03 10:30', end_time: '2025-03-03 13:30', status: 'deleted' },
+        { id: '1001', record_time: '2025-03-01 07:00', room_id: 'R001', room_type: 'classroom', user_id: 'U001', start_time: '2025-03-01 09:00', end_time: '2025-03-01 12:00', status: 'published' },
+        { id: '1002', record_time: '2025-03-02 10:00', room_id: 'R002', room_type: 'conference room', user_id: 'U002', start_time: '2025-03-02 14:00', end_time: '2025-03-02 16:00', status: 'draft' },
+        { id: '1003', record_time: '2025-03-03 8:30', room_id: 'R003', room_type: 'conference room', user_id: 'U003', start_time: '2025-03-03 10:30', end_time: '2025-03-03 13:30', status: 'deleted' },
+        { id: '1003', record_time: '2025-03-03 8:30', room_id: 'R003', room_type: 'conference room', user_id: 'U003', start_time: '2025-03-03 10:30', end_time: '2025-03-03 13:30', status: 'deleted' },
+        { id: '1004', record_time: '2025-03-05 10:00', room_id: 'R004', room_type: 'classroom', user_id: 'U004', start_time: '2025-03-05 14:00', end_time: '2025-03-05 16:00', status: 'draft' }
+
+      ],
+      filterList: [],
       statusOptions: ['published', 'draft', 'deleted'],
-      showReviewer: false,
       temp: {
-        id: undefined,
-        importance: 1,
-        remark: '',
-        timestamp: new Date(),
-        title: '',
-        type: '',
+        record_time: new Date(),
+        start_time: new Date(),
+        end_time: new Date(),
+        id: '',
+        user_id: '',
+        room_id: '',
+        room_type: '',
         status: 'published'
       },
       dialogFormVisible: false,
@@ -191,59 +184,46 @@ export default {
         update: 'Edit',
         create: 'Create'
       },
-      dialogPvVisible: false,
-      pvData: [],
       rules: {
-        type: [{ required: true, message: 'type is required', trigger: 'change' }],
-        timestamp: [{ type: 'date', required: true, message: 'timestamp is required', trigger: 'change' }],
-        title: [{ required: true, message: 'title is required', trigger: 'blur' }]
+        id: [{ required: true, message: 'id is required', trigger: 'blur' }],
+        record_time: [{ type: 'date', required: true, message: 'Record time is required', trigger: 'change' }],
+        user_id: [{ required: true, message: 'User id is required', trigger: 'blur' }],
+        room_id: [{ required: true, message: 'Room id is required', trigger: 'blur' }],
+        room_type: [{ required: true, message: 'Room type is required', trigger: 'blur' }],
+        start_time: [{ type: 'date', required: true, message: 'Start time is required', trigger: 'change' }],
+        end_time: [{ type: 'date', required: true, message: 'End time is required', trigger: 'change' }]
       },
       downloadLoading: false
     }
   },
   created() {
-    this.getList()
+    this.filterList = this.list
+    this.getList
   },
   methods: {
     getList() {
-      this.listLoading = true
-      fetchList(this.listQuery).then(response => {
-        this.list = response.data.items
-        this.total = response.data.total
-
-        // Just to simulate the time of the request
-        setTimeout(() => {
-          this.listLoading = false
-        }, 1.5 * 1000)
-      })
+      const start = (this.listQuery.page - 1) * this.listQuery.limit
+      const end = start + this.listQuery.limit
+      this.filterList = this.list.slice(start, end)
+      this.total = this.list.length
     },
     handleFilter() {
-      this.listQuery.page = 1
-      this.getList()
-    },
-    sortChange(data) {
-      const { prop, order } = data
-      if (prop === 'id') {
-        this.sortByID(order)
-      }
-    },
-    sortByID(order) {
-      if (order === 'ascending') {
-        this.listQuery.sort = '+id'
-      } else {
-        this.listQuery.sort = '-id'
-      }
-      this.handleFilter()
+      this.filterList = this.list.filter(item =>
+        (!this.listQuery.Order_Id || item.id === this.listQuery.Order_Id) &&
+        (!this.listQuery.Room_Id || item.room_id === this.listQuery.Room_Id) &&
+        (!this.listQuery.User_Id || item.user_id === this.listQuery.User_Id)
+      )
     },
     resetTemp() {
       this.temp = {
-        id: undefined,
-        importance: 1,
-        remark: '',
-        timestamp: new Date(),
-        title: '',
-        status: 'published',
-        type: ''
+        record_time: new Date(),
+        start_time: new Date(),
+        end_time: new Date(),
+        id: '',
+        user_id: '',
+        room_id: '',
+        room_type: '',
+        status: 'published'
       }
     },
     handleCreate() {
@@ -257,10 +237,9 @@ export default {
     createData() {
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
-          this.temp.id = parseInt(Math.random() * 100) + 1024 // mock a id
-          this.temp.author = 'vue-element-admin'
           createArticle(this.temp).then(() => {
             this.list.unshift(this.temp)
+            this.handleFilter()
             this.dialogFormVisible = false
             this.$notify({
               title: 'Success',
@@ -281,25 +260,6 @@ export default {
         this.$refs['dataForm'].clearValidate()
       })
     },
-    updateData() {
-      this.$refs['dataForm'].validate((valid) => {
-        if (valid) {
-          const tempData = Object.assign({}, this.temp)
-          tempData.timestamp = +new Date(tempData.timestamp) // change Thu Nov 30 2017 16:41:05 GMT+0800 (CST) to 1512031311464
-          updateArticle(tempData).then(() => {
-            const index = this.list.findIndex(v => v.id === this.temp.id)
-            this.list.splice(index, 1, this.temp)
-            this.dialogFormVisible = false
-            this.$notify({
-              title: 'Success',
-              message: 'Update Successfully',
-              type: 'success',
-              duration: 2000
-            })
-          })
-        }
-      })
-    },
     handleDelete(row, index) {
       this.$notify({
         title: 'Success',
@@ -308,18 +268,13 @@ export default {
         duration: 2000
       })
       this.list.splice(index, 1)
-    },
-    handleFetchPv(pv) {
-      fetchPv(pv).then(response => {
-        this.pvData = response.data.pvData
-        this.dialogPvVisible = true
-      })
+      this.handleFilter()
     },
     handleDownload() {
       this.downloadLoading = true
       import('@/vendor/Export2Excel').then(excel => {
-        const tHeader = ['timestamp', 'title', 'type', 'importance', 'status']
-        const filterVal = ['timestamp', 'title', 'type', 'importance', 'status']
+        const tHeader = ['Order Id', 'Record Time', 'Room Id', 'Room Type', 'User Id', 'Start Time', 'End Time', 'Status']
+        const filterVal = ['id', 'record_time', 'room_id', 'room_type', 'user_id', 'start_time', 'end_time', 'status']
         const data = this.formatJson(filterVal)
         excel.export_json_to_excel({
           header: tHeader,
@@ -331,17 +286,13 @@ export default {
     },
     formatJson(filterVal) {
       return this.list.map(v => filterVal.map(j => {
-        if (j === 'timestamp') {
+        if (j === 'record_time' || j === 'start_time' || j === 'end_time') {
           return parseTime(v[j])
         } else {
           return v[j]
         }
       }))
     },
-    getSortClass: function(key) {
-      const sort = this.listQuery.sort
-      return sort === `+${key}` ? 'ascending' : 'descending'
-    }
   }
 }
 </script>

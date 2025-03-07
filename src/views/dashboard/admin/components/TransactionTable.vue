@@ -1,5 +1,5 @@
 <template>
-  <el-table :data="list" style="width: 100%;padding-top: 5px;">
+  <el-table :data="list" style="width: 100%;padding-top: 5px;" :row-style="{ height:'51px'}">
     <el-table-column label="Order Id" width="90" align="center">
       <template slot-scope="scope">
         {{ scope.row.order_no | orderNoFilter }}

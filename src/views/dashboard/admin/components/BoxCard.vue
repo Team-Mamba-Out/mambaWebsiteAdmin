@@ -7,18 +7,18 @@
       <pan-thumb :image="avatar" class="panThumb" />
       <mallki class-name="mallki-text" text="Administrator" />
       <div style="padding-top:35px;" class="progress-item">
-        <span>Name: {{ userInfo.name }}</span>
+        <span>Name: {{ userInfo.name || 'N/A' }}</span>
       </div>
       <div class="progress-item">
-        <span>Uid: {{ userInfo.uid }}</span>
+        <span>Uid: {{ userInfo.uid || 'N/A' }}</span>
 
       </div>
       <div class="progress-item">
-        <span>Email: {{ userInfo.email }}</span>
+        <span>Email: {{ userInfo.email || 'N/A' }}</span>
 
       </div>
       <div class="progress-item">
-        <span>Phone: {{ userInfo.phone }}</span>
+        <span>Phone: {{ userInfo.phone || 'N/A' }}</span>
 
       </div>
     </div>
@@ -26,6 +26,7 @@
 </template>
 
 <script>
+import { fetchAdmins } from '@/api/admin'
 import { mapGetters } from 'vuex'
 import PanThumb from '@/components/PanThumb'
 import Mallki from '@/components/TextHoverEffect/Mallki'
@@ -44,12 +45,7 @@ export default {
   },
   data() {
     return {
-      userInfo: {
-      name: "John Doe",
-      uid: "123456",
-      email: "johndoe@example.com",
-      phone: "+1234567890"
-      }
+      userInfo: {}
     }
   },
   computed: {
@@ -58,6 +54,23 @@ export default {
       'avatar',
       'roles'
     ])
+  },
+  created() {
+    this.getAdminInfo()
+  },
+
+  methods: {
+    async getAdminInfo() {
+      try {
+        const response = await fetchAdmins()
+        if (response.data && response.data.data.length > 0) {
+          this.userInfo = response.data.data[0]
+          console.warn('No admin data found.')
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin data:', error)
+      }
+    }
   }
 }
 </script>

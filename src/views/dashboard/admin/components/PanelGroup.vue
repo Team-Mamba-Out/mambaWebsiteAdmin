@@ -57,6 +57,9 @@
 
 <script>
 import CountTo from 'vue-count-to'
+import { countCompletedOrders, countOrders } from '@/api/order'
+import { countRooms } from '@/api/room'
+import { countUsers } from '@/api/userCount'
 
 export default {
   components: {
@@ -65,14 +68,33 @@ export default {
   data() {
     return {
       stats: {
-        classroom: 20,
-        existorder: 35,
-        usernumber: 45,
-        completeorder: 5
+        classroom: 0,
+        existorder: 0,
+        usernumber: 0,
+        completeorder: 0
       }
     }
   },
+  created() {
+    this.getStats
+  },
   methods: {
+    async getStats() {
+      try {
+        const [classroomRes, orderRes, userRes, completedOrderRes] = await Promise.all([
+          countRooms(),
+          countOrders(),
+          countUsers(),
+          countCompletedOrders()
+        ])
+        this.stats.classroom = classroomRes.data.data
+        this.stats.existorder = orderRes.data.data
+        this.stats.usernumber = userRes.data.data
+        this.stats.completeorder = completedOrderRes.data.data
+      } catch (error) {
+        console.error('Failed to fetch stats:', error)
+      }
+    },
     handleSetLineChartData(type) {
       this.$emit('handleSetLineChartData', type)
     }

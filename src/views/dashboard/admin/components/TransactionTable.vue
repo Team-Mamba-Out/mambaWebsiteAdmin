@@ -36,23 +36,16 @@
 </template>
 
 <script>
+import { fetchOrders } from '@/api/order'
+
 export default {
   filters: {
     statusFilter(status) {
       const statusMap = {
-        success: 'success',
-        pending: 'danger',
-        warning: 'warning'
+        'completed': 'success',
+        'incompleted': 'warning'
       }
       return statusMap[status]
-    },
-    statusText(status) {
-      const textMap = {
-        success: 'completed',
-        pending: 'canceled',
-        warning: 'upcoming'
-      }
-      return textMap[status]
     },
     orderNoFilter(str) {
       return str.substring(0, 30)
@@ -60,65 +53,23 @@ export default {
   },
   data() {
     return {
-      list: [
-      {
-          order_no: '1',
-          room_id: 'R001',
-          user_id: 'U001',
-          start_time: '2025-03-01 09:00',
-          end_time: '2025-03-01 12:00',
-          status: 'success'
-        },
-        {
-          order_no: '2',
-          room_id: 'R002',
-          user_id: 'U002',
-          start_time: '2025-03-02 14:00',
-          end_time: '2025-03-02 16:00',
-          status: 'success'
-        },
-        {
-          order_no: '3',
-          room_id: 'R003',
-          user_id: 'U003',
-          start_time: '2025-03-03 10:30',
-          end_time: '2025-03-03 13:30',
-          status: 'pending'
-        },
-        {
-          order_no: '4',
-          room_id: 'R004',
-          user_id: 'U004',
-          start_time: '2025-03-04 08:00',
-          end_time: '2025-03-04 11:00',
-          status: 'success'
-        },
-        {
-          order_no: '5',
-          room_id: 'R005',
-          user_id: 'U005',
-          start_time: '2025-03-05 13:00',
-          end_time: '2025-03-05 15:00',
-          status: 'pending'
-        },
-        {
-          order_no: '6',
-          room_id: 'R006',
-          user_id: 'U006',
-          start_time: '2025-03-06 11:00',
-          end_time: '2025-03-06 14:00',
-          status: 'warning'
-        },
-        {
-          order_no: '7',
-          room_id: 'R007',
-          user_id: 'U007',
-          start_time: '2025-03-06 11:00',
-          end_time: '2025-03-06 14:00',
-          status: 'pending'
-        },
-      ]
+      list: []
     }
   },
+  created() {
+    this.getRecentOrder()
+  },
+  methods: {
+    async getRecentOrders() {
+      try {
+        const response = await fetchOrders({ page: 1, size: 20 })
+        const records = response.data.data.records
+        const validOrders = records.filter(order => !order.isCancelled)
+        this.list = validOrders.slice(0, 7).map(order => ({ ...order, status: order.hasCheckedIn ? 'completed' : 'incompleted' }))
+      } catch (error) {
+        console.error('Failed to fetch recent orders:', error)
+      }
+    }
+  }
 }
 </script>

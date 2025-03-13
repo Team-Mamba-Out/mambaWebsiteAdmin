@@ -347,7 +347,7 @@ export default {
       }
     },
     searchUser() {
-    const matchedUsers = this.users.filter(user => user.email.includes(this.searchQuery));
+    const matchedUsers = this.users.filter(user => user.email.includes(this.searchQuery));//filter teachers
       if (matchedUsers != null) {
         this.$confirm(`User ${matchedUsers[0].name} found. Do you want to add?`, 'User Found', {
           confirmButtonText: 'Yes',

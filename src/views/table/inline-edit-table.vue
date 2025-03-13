@@ -1,76 +1,19 @@
 <template>
   <div class="app-container">
-    <el-table v-loading="listLoading" :data="list" border fit highlight-current-row style="width: 100%">
-      <el-table-column align="center" label="ID" width="80">
-        <template slot-scope="{row}">
-          <span>{{ row.id }}</span>
+    <el-table :data="users" style="width: 100%; margin-top: 20px;" border>
+      <el-table-column prop="uid" label="User ID" width="120" />
+      <el-table-column prop="name" label="User Name" width="150" />
+      <el-table-column prop="role" label="Role" width="150">
+        <template slot-scope="scope">
+          <el-select v-model="scope.row.role" placeholder="Select Role" @change="handleRoleChange(scope.row)">
+            <el-option label="Teacher" :value="1" />
+            <el-option label="Student" :value="2" />
+          </el-select>
         </template>
       </el-table-column>
-
-      <el-table-column width="180px" align="center" label="Date">
-        <template slot-scope="{row}">
-          <span>{{ row.timestamp | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column width="120px" align="center" label="Author">
-        <template slot-scope="{row}">
-          <span>{{ row.author }}</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column width="100px" label="Importance">
-        <template slot-scope="{row}">
-          <svg-icon v-for="n in + row.importance" :key="n" icon-class="star" class="meta-item__icon" />
-        </template>
-      </el-table-column>
-
-      <el-table-column class-name="status-col" label="Status" width="110">
-        <template slot-scope="{row}">
-          <el-tag :type="row.status | statusFilter">
-            {{ row.status }}
-          </el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column min-width="300px" label="Title">
-        <template slot-scope="{row}">
-          <template v-if="row.edit">
-            <el-input v-model="row.title" class="edit-input" size="small" />
-            <el-button
-              class="cancel-btn"
-              size="small"
-              icon="el-icon-refresh"
-              type="warning"
-              @click="cancelEdit(row)"
-            >
-              cancel
-            </el-button>
-          </template>
-          <span v-else>{{ row.title }}</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column align="center" label="Actions" width="120">
-        <template slot-scope="{row}">
-          <el-button
-            v-if="row.edit"
-            type="success"
-            size="small"
-            icon="el-icon-circle-check-outline"
-            @click="confirmEdit(row)"
-          >
-            Ok
-          </el-button>
-          <el-button
-            v-else
-            type="primary"
-            size="small"
-            icon="el-icon-edit"
-            @click="row.edit=!row.edit"
-          >
-            Edit
-          </el-button>
+      <el-table-column label="Actions" width="150">
+        <template slot-scope="scope">
+          <el-button size="mini" type="danger" @click="handleDelete(scope.row.uid)">Delete</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -78,59 +21,74 @@
 </template>
 
 <script>
-import { fetchList } from '@/api/article'
+import axios from 'axios'
 
 export default {
-  name: 'InlineEditTable',
-  filters: {
-    statusFilter(status) {
-      const statusMap = {
-        published: 'success',
-        draft: 'info',
-        deleted: 'danger'
-      }
-      return statusMap[status]
-    }
-  },
   data() {
     return {
-      list: null,
-      listLoading: true,
-      listQuery: {
-        page: 1,
-        limit: 10
-      }
+      users: []
     }
   },
   created() {
-    this.getList()
+    this.fetchUsers()
   },
   methods: {
-    async getList() {
-      this.listLoading = true
-      const { data } = await fetchList(this.listQuery)
-      const items = data.items
-      this.list = items.map(v => {
-        this.$set(v, 'edit', false) // https://vuejs.org/v2/guide/reactivity.html
-        v.originalTitle = v.title //  will be used when user click the cancel botton
-        return v
+    fetchUsers() {
+      axios.get('/users', {
+        params: {
+          pageSize: 10,
+          offset: 0
+        }
       })
-      this.listLoading = false
+        .then(response => {
+          this.users = response.data.data
+        })
+        .catch(error => {
+          console.error('Error fetching users:', error)
+        })
     },
-    cancelEdit(row) {
-      row.title = row.originalTitle
-      row.edit = false
-      this.$message({
-        message: 'The title has been restored to the original value',
+    handleRoleChange(user) {
+      axios.put(`/users/${user.uid}`, { role: user.role })
+        .then(() => {
+          this.$message({
+            type: 'success',
+            message: 'Role updated successfully!'
+          })
+        })
+        .catch(error => {
+          console.error('Error updating role:', error)
+          this.$message({
+            type: 'error',
+            message: 'Failed to update role'
+          })
+        })
+    },
+    handleDelete(uid) {
+      this.$confirm('Are you sure to delete this user?', 'Reminder', {
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'Cancel',
         type: 'warning'
-      })
-    },
-    confirmEdit(row) {
-      row.edit = false
-      row.originalTitle = row.title
-      this.$message({
-        message: 'The title has been edited',
-        type: 'success'
+      }).then(() => {
+        axios.delete(`/users/delete/${uid}`)
+          .then(() => {
+            this.users = this.users.filter(user => user.uid !== uid)
+            this.$message({
+              type: 'success',
+              message: 'Deleted successfully!'
+            })
+          })
+          .catch(error => {
+            console.error('Error deleting user:', error)
+            this.$message({
+              type: 'error',
+              message: 'Failed to delete user'
+            })
+          })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: 'Delete canceled'
+        })
       })
     }
   }
@@ -138,12 +96,15 @@ export default {
 </script>
 
 <style scoped>
-.edit-input {
-  padding-right: 100px;
+.app-container {
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
 }
-.cancel-btn {
-  position: absolute;
-  right: 15px;
-  top: 10px;
+
+.el-table {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 </style>

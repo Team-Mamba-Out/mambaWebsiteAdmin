@@ -1,134 +1,185 @@
 <template>
   <div class="app-container">
-    <el-button type="primary" class="add-button" @click="handleAdd">添加教室</el-button>
-    <el-table :data="classrooms" style="width: 100%; margin-top: 20px;" border>
-      <el-table-column prop="id" label="房间ID" width="100" />
-      <el-table-column prop="name" label="教室名称" width="180">
+    <el-button type="primary" class="add-button" @click="handleAdd">Add New Room</el-button>
+    <el-table :data="classrooms" style="width: 1450px; margin-top: 20px;" border>
+      <el-table-column prop="id" label="Room ID" width="80" />
+      <el-table-column prop="roomName" label="Room Name" width="230" />
+      <el-table-column prop="image" label="Room Image" width="110">
         <template slot-scope="scope">
-          <el-link @click="handleViewImage(scope.row)">{{ scope.row.name }}</el-link>
+          <el-link type="primary" @click="handleViewImage(scope.row)">{{ "Click to view" }}</el-link>
         </template>
       </el-table-column>
-      <el-table-column prop="type" label="房间类型" width="120" />
-      <el-table-column prop="capacity" label="容量" width="100" />
-      <el-table-column label="投影仪" width="100">
+      <el-table-column prop="type" label="Room Type" width="150">
         <template slot-scope="scope">
-
-          {{ scope.row.projector > 0 ? scope.row.projector : '无' }}
+          <span v-if="scope.row.roomType === 1">Teaching Room</span>
+          <span v-else-if="scope.row.roomType === 2">Meeting Room</span>
+          <span v-else-if="scope.row.roomType === 3">Activity Room</span>
+          <span v-else>Unknown</span>
         </template>
       </el-table-column>
-      <el-table-column label="多媒体" width="100">
+      <el-table-column prop="capacity" label="Capacity" width="100" />
+      <el-table-column label="projector" width="100">
         <template slot-scope="scope">
-          {{ scope.row.multimedia > 0 ? scope.row.multimedia : '无' }}
+          {{ scope.row.projector? 'Yes' : 'No' }}
         </template>
       </el-table-column>
-      <el-table-column label="特殊权限" width="180">
+      <el-table-column label="Multimedia" width="110">
         <template slot-scope="scope">
-          <el-checkbox v-model="scope.row.specialPermission">特殊权限</el-checkbox>
-          <el-button v-if="scope.row.specialPermission" size="mini" @click="handleSetPermission(scope.row)">设置权限</el-button>
+          {{ scope.row.multimedia ? 'Yes' : 'No' }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180">
+      <el-table-column label="Restriction" width="150">
         <template slot-scope="scope">
-          <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
-          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+          <el-checkbox v-model="scope.row.isRestricted" class="readonly-checkbox">is Restricted</el-checkbox>
+          <el-button v-if="scope.row.isRestricted" size="mini" @click="handleSetPermission(scope.row)">Set Permission</el-button>
+        </template>
+      </el-table-column>
+      <el-table-column label="Approval" width="150">
+        <template slot-scope="scope">
+          <el-checkbox v-model="scope.row.requireApproval" class="readonly-checkbox">Required</el-checkbox>
+        </template>
+      </el-table-column>
+      <el-table-column label="Permission Setting" width="200">
+        <template slot-scope="scope">
+          <el-button size="mini" type="success" @click="handleEdit(scope.row)">Edit</el-button>
+          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">Delete</el-button>
         </template>
       </el-table-column>
     </el-table>
-
+    <el-pagination
+      :current-page="pagination.currentPage"
+      :page-sizes="[10, 20, 50, 100]"
+      :page-size="pagination.pageSize"
+      layout="total, sizes, prev, pager, next"
+      :total="pagination.total"
+      @current-change="handlePageChange"
+      @size-change="handleSizeChange"
+    />
     <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="500px">
       <el-form :model="currentClassroom" label-width="100px">
-        <el-form-item label="房间ID">
+        <el-form-item label="Room ID">
           <el-input v-model="currentClassroom.id" type="number" disabled />
         </el-form-item>
-        <el-form-item label="教室名称">
-          <el-input v-model="currentClassroom.name" />
+        <el-form-item label="Room Name">
+          <el-input v-model="currentClassroom.roomName" />
         </el-form-item>
-        <el-form-item label="房间类型">
-          <el-input v-model="currentClassroom.type" />
+        <el-form-item label="Location">
+          <el-input v-model="currentClassroom.location" />
         </el-form-item>
-        <el-form-item label="容量">
+        <el-form-item label="Room Type">
+          <el-select v-model="currentClassroom.roomType" placeholder="Select Room Type">
+            <el-option label="Teaching Room" :value="1"></el-option>
+            <el-option label="Meeting Room" :value="2"></el-option>
+            <el-option label="Activity Room" :value="3"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Capacity">
           <el-input v-model="currentClassroom.capacity" type="number" />
         </el-form-item>
-        <el-form-item label="投影仪">
-          <el-input v-model="currentClassroom.projector" type="number" />
+        <el-form-item label="Projector">
+          <el-select v-model="currentClassroom.projector" placeholder="Select Projector">
+            <el-option label="Yes" :value="true"></el-option>
+            <el-option label="No" :value="false"></el-option>
+          </el-select>
         </el-form-item>
-        <el-form-item label="多媒体">
-          <el-input v-model="currentClassroom.multimedia" type="number" />
+        <el-form-item label="Multimedia">
+          <el-select v-model="currentClassroom.multimedia" placeholder="Select Multimedia">
+            <el-option label="Yes" :value="true"></el-option>
+            <el-option label="No" :value="false"></el-option>
+          </el-select>
         </el-form-item>
-        <el-form-item label="教室图片">
+        <el-form-item label="Room Image">
           <el-upload
             class="upload-demo"
             action="#"
             :show-file-list="false"
-            :on-success="handleUploadSuccess"
+            :auto-upload="false"
             :before-upload="beforeUpload"
-          />
-          <el-button slot="trigger" size="small" type="primary">选取图片</el-button>
-          <div slot="tip" class="el-upload__tip">只能上传jpg/png文件,且不超过500kb</div>
-          <img v-if="currentClassroom.imageUrl" :src="currentClassroom.imageUrl" class="classroom-image-preview">
+            :on-change="handleUploadSuccess"
+          >
+            <el-button size="small" type="primary">Selet Image</el-button>
+          </el-upload>
+          <img v-if="currentClassroom.url" :src="currentClassroom.url" class="classroom-image-preview">
+          <div class="el-upload__tip">Only jpg/png files with a maximum size of 500kb can be uploaded</div>
         </el-form-item>
-        <el-form-item label="特殊权限">
-          <el-checkbox v-model="currentClassroom.specialPermission">特殊权限</el-checkbox>
+        <el-form-item label="Restriction">
+          <el-checkbox v-model="currentClassroom.isRestricted">is Restricted</el-checkbox>
+        </el-form-item>
+        <el-form-item label="Approval">
+          <el-checkbox v-model="currentClassroom.requireApproval">Approval is required</el-checkbox>
+        </el-form-item>
+        <el-form-item label="Description" >
+          <el-input v-model="currentClassroom.description" type="textarea" :rows="7" />
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button @click="dialogVisible = false">Cancel</el-button>
+        <el-button type="primary" @click="handleSave">Save</el-button>
       </div>
     </el-dialog>
 
-    <el-dialog title="教室图片" :visible.sync="imageDialogVisible" width="500px">
+    <el-dialog title="Room Image" :visible.sync="imageDialogVisible" width="500px">
       <img :src="currentImage" class="classroom-image-preview">
     </el-dialog>
 
-    <el-dialog title="设置权限" :visible.sync="permissionDialogVisible" width="500px">
+    <el-dialog title="Permission Setting" :visible.sync="permissionDialogVisible" width="500px">
       <el-form :model="currentPermission" label-width="150px">
-        <el-form-item label="允许预定的用户" class="indented-item">
-          <el-input v-model="searchQuery" placeholder="搜索用户姓名" />
-          <el-button @click="searchUser">搜索</el-button>
-          <el-select v-model="currentPermission.allowedUsers" multiple placeholder="请选择用户">
-            <el-option
-              v-for="user in filteredUsers"
-              :key="user.id"
-              :label="user.name"
-              :value="user.id"
-            />
-          </el-select>
-          <el-button v-if="filteredUsers.length > 0" @click="addUser">添加</el-button>
-        </el-form-item>
+        <div style="display: flex; align-items: center; gap: 0px;">
+          <el-input v-model="searchQuery" placeholder="Input User Email" style="width: 350px" @keyup.enter.native="searchUser" />
+          <el-button class="search-button" @click="searchUser">Search</el-button>
+        </div>
+        <el-select v-model="currentPermission.allowedUsers" class="user-select" multiple placeholder="Please Select Users" style="width: 350px;">
+          <el-option
+            v-for="user in users"
+            :key="user.uid"
+            :label="user.name"
+            :value="user.uid"
+          />
+        </el-select>
         <el-form-item>
-          <el-checkbox v-model="allTeachersSelected" @change="handleAllTeachersChange">所有老师</el-checkbox>
-          <el-checkbox v-model="allStudentsSelected" @change="handleAllStudentsChange">所有学生</el-checkbox>
+          <div style="margin-left: -150px; margin-top: 0px;">
+            <el-checkbox v-model="allTeachersSelected" @change="handleAllTeachersChange">All Teachers</el-checkbox>
+          </div>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="permissionDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSavePermission">保存</el-button>
+        <div style="margin-top: -25px">
+          <el-button class="clear-button" style="margin-right: 0px;" @click="clearAllPermissions">Clear Permission</el-button>
+          <el-button @click="permissionDialogVisible = false">Cancel</el-button>
+          <el-button type="primary" @click="handleSavePermission">Save</el-button>
+        </div>
       </div>
     </el-dialog>
   </div>
 </template>
 
 <script>
+import { getRooms, getLecturers ,setPermissionUser, getPermissionUser, deleteRoom, addRoom} from '@/api/room'
 export default {
   data() {
     return {
-      classrooms: [
-        { id: 1, name: '教室A', type: '普通教室', capacity: 30, projector: 1, multimedia: 0, specialPermission: false, allowedUsers: [], imageUrl: '/images/classroomA.jpg' },
-        { id: 2, name: '教室B', type: '多媒体教室', capacity: 50, projector: 2, multimedia: 1, specialPermission: false, allowedUsers: [1, 2], imageUrl: '/images/classroomB.png' }
-      ],
+      classrooms: [],
       dialogVisible: false,
       dialogTitle: '',
       currentClassroom: {
         id: null,
-        name: '',
-        type: '',
+        isBusy: false,
+        location: '',
+        requireApproval: false,
+        roomName: '',
+        roomType: 0,
         capacity: 0,
-        projector: 0,
-        multimedia: 0,
-        specialPermission: false,
+        projector: false,
+        multimedia: false,
+        isRestricted: false,
         allowedUsers: [],
-        imageUrl: ''
+        url: '',
+        description: ''
+      },
+      pagination: {
+        currentPage: 1,
+        pageSize: 10,
+        total: 0
       },
       permissionDialogVisible: false,
       currentPermission: {
@@ -136,83 +187,135 @@ export default {
       },
       imageDialogVisible: false,
       currentImage: '',
-      users: [
-        { id: 1, name: '学生A' },
-        { id: 2, name: '学生B' },
-        { id: 3, name: '老师A' },
-        { id: 4, name: '老师B' }
-      ],
+      users: [],
       allTeachersSelected: false,
       allStudentsSelected: false,
       searchQuery: '',
       filteredUsers: []
     }
   },
+  created() {
+    this.fetchClassrooms()
+    this.fetchUsers()
+  },
   methods: {
+    fetchClassrooms() {
+     getRooms({
+        page: this.pagination.currentPage,
+        limit: this.pagination.pageSize
+      })
+        .then(response => {
+          this.classrooms = response.data.data.rooms
+          console.log(this.classrooms)
+          this.pagination.total = response.data.data.total
+          this.classrooms.forEach(room => {
+            getPermissionUser({ room_id: room.id })
+              .then(permissionResponse => {
+                room.allowedUsers = permissionResponse.data.data[0]
+              })
+              .catch(error => {
+                console.error(`Error fetching permissions for room ${room.id}:`, error)
+              })
+          })
+        })
+        .catch(error => {
+          console.error('Error fetching classrooms:', error)
+        })
+    },
+    fetchUsers() {
+      getLecturers()
+        .then(response => {
+          this.users = response.data.data.lecturers
+          console.log(this.users);
+        })
+        .catch(error => {
+          console.error('Error fetching users:', error)
+        })
+    },
     handleAdd() {
-      this.dialogTitle = '添加教室'
-      this.currentClassroom = { id: null, name: '', type: '', capacity: 0, projector: 0, multimedia: 0, specialPermission: false, allowedUsers: [], imageUrl: '' }
+      this.dialogTitle = 'Add Room'
+      this.currentClassroom = { id: null, roomName: '', roomType: 1, capacity: 0, projector: false, multimedia: false, isRestricted: false, url: '' }
       this.dialogVisible = true
     },
     handleEdit(row) {
-      this.dialogTitle = '编辑教室'
-      this.currentClassroom = { ...row }
-      this.dialogVisible = true
-    },
+    this.dialogTitle = 'Edit Room'
+    this.currentClassroom = { ...row}
+    this.dialogVisible = true
+  },
     handleDelete(row) {
-      this.$confirm('确定删除该教室吗?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      this.$confirm('Are you sure to delete this classroom?', 'Reminder', {
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'Cancel',
         type: 'warning'
       }).then(() => {
-        this.classrooms = this.classrooms.filter(classroom => classroom !== row)
-        this.$message({
-          type: 'success',
-          message: '删除成功!'
-        })
+        deleteRoom(row.id)
+          .then(() => {
+            this.fetchClassrooms()
+            this.$message.success('Room deleted successfully!')
+          })
+          .catch(error => {
+            console.error('Error deleting room:', error)
+            this.$message.error('Failed to delete room.')
+          })
       }).catch(() => {
         this.$message({
           type: 'info',
-          message: '已取消删除'
+          message: 'Delete canceled'
         })
       })
     },
     handleSave() {
-      if (this.dialogTitle === '添加教室') {
-        this.currentClassroom.id = this.classrooms.length + 1
-        this.classrooms.push({ ...this.currentClassroom })
+      if (this.currentClassroom.id) {
+        // Update existing room
+        addRoom(this.currentClassroom)
+          .then(() => {
+            this.fetchClassrooms()
+            this.dialogVisible = false
+            this.$message.success('Room updated successfully!')
+          })
+          .catch(error => {
+            console.error('Error updating room:', error)
+            this.$message.error('Failed to update room.')
+          })
       } else {
-        const index = this.classrooms.findIndex(classroom => classroom.id === this.currentClassroom.id)
-        if (index !== -1) {
-          this.classrooms.splice(index, 1, { ...this.currentClassroom })
-        }
+        // Add new room
+        addRoom(this.currentClassroom)
+          .then(() => {
+            this.fetchClassrooms()
+            this.dialogVisible = false
+            this.$message.success('Room added successfully!')
+          })
+          .catch(error => {
+            console.error('Error adding room:', error)
+            this.$message.error('Failed to add room.')
+          })
       }
-      this.dialogVisible = false
-      this.$message({
-        type: 'success',
-        message: '保存成功!'
-      })
     },
     handleSetPermission(row) {
-      this.currentPermission = { ...row }
-      this.allTeachersSelected = this.currentPermission.allowedUsers.length === this.users.filter(user => user.name.includes('老师')).length
-      this.allStudentsSelected = this.currentPermission.allowedUsers.length === this.users.filter(user => user.name.includes('学生')).length
-      this.filteredUsers = this.users
+      this.currentClassroom= {...row}
+      this.filteredUsers = []
       this.permissionDialogVisible = true
     },
     handleSavePermission() {
-      const index = this.classrooms.findIndex(classroom => classroom.id === this.currentPermission.id)
-      if (index !== -1) {
-        this.classrooms.splice(index, 1, { ...this.currentPermission })
-      }
-      this.permissionDialogVisible = false
-      this.$message({
-        type: 'success',
-        message: '权限设置成功!'
+      setPermissionUser({
+        room_id: this.currentClassroom.id,
+        uids: this.currentPermission.allowedUsers
       })
+        .then(() => {
+          this.fetchClassrooms() // Refresh list
+          this.permissionDialogVisible = false
+          this.$message.success('Permission saved successfully!')
+        })
+        .catch(error => {
+          console.error('Error saving permission:', error)
+          this.$message.error('Failed to save permission.')
+        })
     },
     handleUploadSuccess(response, file) {
-      this.currentClassroom.imageUrl = URL.createObjectURL(file.raw)
+      this.currentClassroom.url = ''
+      this.$nextTick(() => {
+        this.currentClassroom.url = URL.createObjectURL(file.raw)
+      })
     },
     beforeUpload(file) {
       const isJPG = file.type === 'image/jpeg'
@@ -220,66 +323,86 @@ export default {
       const isLt500K = file.size / 1024 / 1024 < 0.5
 
       if (!isJPG && !isPNG) {
-        this.$message.error('上传图片只能是 JPG 或 PNG 格式!')
+        this.$message.error('Upload images only in JPG or PNG format!')
+        return false
       }
       if (!isLt500K) {
-        this.$message.error('上传图片大小不能超过 500KB!')
+        this.$message.error('Upload picture size cannot exceed 500KB!')
+        return false
       }
-      return (isJPG || isPNG) && isLt500K
+      return true
     },
     handleViewImage(row) {
-      this.currentImage = row.imageUrl
+      this.currentImage = row.url
       this.imageDialogVisible = true
     },
     handleAllTeachersChange() {
       if (this.allTeachersSelected) {
-        const teacherNames = this.users.filter(user => user.name.includes('老师')).map(user => user.name)
-        this.currentPermission.allowedUsers = this.currentPermission.allowedUsers.filter(userName => !this.users.some(user => user.name === userName && user.name.includes('老师')))
-        this.currentPermission.allowedUsers = [...this.currentPermission.allowedUsers, ...teacherNames]
+        const teacherIds = this.users.map(user => user.uid);
+        this.currentPermission.allowedUsers = Array.from(new Set([...this.currentPermission.allowedUsers, ...teacherIds]));
       } else {
-        this.currentPermission.allowedUsers = this.currentPermission.allowedUsers.filter(userName => !this.users.some(user => user.name === userName && user.name.includes('老师')))
-      }
-    },
-    handleAllStudentsChange() {
-      if (this.allStudentsSelected) {
-        const studentNames = this.users.filter(user => user.name.includes('学生')).map(user => user.name)
-        this.currentPermission.allowedUsers = this.currentPermission.allowedUsers.filter(userName => !this.users.some(user => user.name === userName && user.name.includes('学生')))
-        this.currentPermission.allowedUsers = [...this.currentPermission.allowedUsers, ...studentNames]
-      } else {
-        this.currentPermission.allowedUsers = this.currentPermission.allowedUsers.filter(userName => !this.users.some(user => user.name === userName && user.name.includes('学生')))
+        this.currentPermission.allowedUsers = this.currentPermission.allowedUsers.filter(uid =>
+          !this.users.some(user => user.uid === uid)
+        );
       }
     },
     searchUser() {
-      const query = this.searchQuery.trim().toLowerCase()
-      this.filteredUsers = this.users.filter(user => user.name.toLowerCase().includes(query))
-      if (this.filteredUsers.length === 1) {
-        const user = this.filteredUsers[0]
-        this.searchQuery = user.name
+    const matchedUsers = this.users.filter(user => user.email.includes(this.searchQuery));
+      if (matchedUsers != null) {
+        this.$confirm(`User ${matchedUsers[0].name} found. Do you want to add?`, 'User Found', {
+          confirmButtonText: 'Yes',
+          cancelButtonText: 'No',
+          type: 'info'
+        }).then(() => {
+          this.addUser(matchedUsers[0])
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: 'User not added'
+          })
+        })
       } else {
-        this.filteredUsers = []
+        this.$alert('No user found. Please check the name and try again.', 'User Not Found', {
+          confirmButtonText: 'OK',
+          type: 'warning'
+        })
       }
     },
-    addUser() {
-      this.filteredUsers.forEach(user => {
-        if (!this.currentPermission.allowedUsers.includes(user.name)) {
-          this.currentPermission.allowedUsers.push(user.name)
-        }
-      })
+    addUser(user) {
+      if (!this.currentPermission.allowedUsers.includes(user.uid)) {
+        this.currentPermission.allowedUsers.push(user.uid)
+      }
+      this.currentPermission.allowedUsers = [...this.currentPermission.allowedUsers]
       this.filteredUsers = []
       this.searchQuery = ''
+    },
+    clearAllPermissions() {
+      this.currentPermission.allowedUsers = []
     },
     getUserTypeById(userId) {
       const user = this.users.find(user => user.id === userId)
       if (user) {
-        return user.name.includes('老师') ? '老师' : '学生'
+        return user.name.includes('Teacher') ? 'Teacher' : 'Student'
       }
       return null
+    },
+    handlePageChange(page) {
+      this.pagination.currentPage = page
+      this.fetchClassrooms()
+    },
+    handleSizeChange(size) {
+      this.pagination.pageSize = size
+      this.pagination.currentPage = 1
+      this.fetchClassrooms()
     }
   }
 }
 </script>
 
 <style scoped>
+.readonly-checkbox {
+  pointer-events: none;
+}
 .app-container {
   padding: 20px;
   background-color: #f5f5f5;
@@ -316,5 +439,22 @@ export default {
 
 .indented-item {
   padding-left: 20px;
+}
+
+.search-button {
+  margin-left: 10px;
+}
+
+.user-select {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.add-button {
+  margin-top: 10px;
+}
+
+.clear-button {
+  margin-right: 10px;
 }
 </style>

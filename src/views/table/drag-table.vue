@@ -30,13 +30,14 @@
       </el-table-column>
       <el-table-column label="Restriction" width="150">
         <template slot-scope="scope">
-          <el-checkbox v-model="scope.row.isRestricted" class="readonly-checkbox">is Restricted</el-checkbox>
-          <el-button v-if="scope.row.isRestricted" size="mini" @click="handleSetPermission(scope.row)">Set Permission</el-button>
+          <el-checkbox v-model="scope.row.restricted" class="readonly-checkbox">is Restricted</el-checkbox>
+          <el-button v-if="scope.row.restricted" size="mini" @click="handleSetPermission(scope.row)">Set Permission</el-button>
         </template>
       </el-table-column>
       <el-table-column label="Approval" width="150">
         <template slot-scope="scope">
           <el-checkbox v-model="scope.row.requireApproval" class="readonly-checkbox">Required</el-checkbox>
+          <el-button v-if="scope.row.requireApproval" size="mini" @click="handleApproval(scope.row)">handle approval</el-button>
         </template>
       </el-table-column>
       <el-table-column label="Permission Setting" width="200">
@@ -55,10 +56,11 @@
       @current-change="handlePageChange"
       @size-change="handleSizeChange"
     />
+
     <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="500px">
       <el-form :model="currentClassroom" label-width="100px">
         <el-form-item label="Room ID">
-          <el-input v-model="currentClassroom.id" type="number" disabled />
+          <el-input v-model="currentClassroom.id" type="number" disabled/>
         </el-form-item>
         <el-form-item label="Room Name">
           <el-input v-model="currentClassroom.roomName" />
@@ -88,28 +90,28 @@
             <el-option label="No" :value="false"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="Room Image">
+        <!-- <el-form-item label="Room Image">
           <el-upload
             class="upload-demo"
             action="#"
             :show-file-list="false"
-            :auto-upload="false"
+            :auto-upload="true"
             :before-upload="beforeUpload"
             :on-change="handleUploadSuccess"
           >
-            <el-button size="small" type="primary">Selet Image</el-button>
+          <el-button size="small" type="primary">Selet Image</el-button>
           </el-upload>
           <img v-if="currentClassroom.url" :src="currentClassroom.url" class="classroom-image-preview">
           <div class="el-upload__tip">Only jpg/png files with a maximum size of 500kb can be uploaded</div>
-        </el-form-item>
+        </el-form-item> -->
         <el-form-item label="Restriction">
-          <el-checkbox v-model="currentClassroom.isRestricted">is Restricted</el-checkbox>
+          <el-checkbox v-model="currentClassroom.restricted">is Restricted</el-checkbox>
         </el-form-item>
         <el-form-item label="Approval">
           <el-checkbox v-model="currentClassroom.requireApproval">Approval is required</el-checkbox>
         </el-form-item>
         <el-form-item label="Description" >
-          <el-input v-model="currentClassroom.description" type="textarea" :rows="7" />
+          <el-input v-model="currentClassroom.description" type="textarea" :rows="8" />
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -150,14 +152,55 @@
         </div>
       </div>
     </el-dialog>
+
+    <el-dialog title="Approval Orders" :visible.sync="approvalDialogVisible" width="1100px">
+      <el-table :data="approvalOrders" border style="width: 100%">
+        <el-table-column prop="id" label="Order ID" width="80" />
+        <el-table-column prop="userId" label="User Name" width="120">
+          <template slot-scope="scope">
+            {{ getUserNameById(scope.row.userId) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="startTime" label="Start Time" width="180">
+          <template slot-scope="scope">
+            {{ formatDate(scope.row.startTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="endTime" label="End Time" width="180">
+          <template slot-scope="scope">
+            {{ formatDate(scope.row.endTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="recordTime" label="Record Time" width="180">
+          <template slot-scope="scope">
+            {{ formatDate(scope.row.recordTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="Status" width="100">
+          <template slot-scope="scope">
+            <span :style="{ color: getStatusColor(scope.row.statusId) }">
+              {{ getStatusText(scope.row.statusId) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="Action" width="250">
+          <template slot-scope="scope">
+            <el-button size="mini" type="success" @click="ApproveOrder(scope.row.id)">Approve</el-button>
+            <el-button size="mini" type="danger" @click="RejectOrder(scope.row.id)">Reject</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { getRooms, getLecturers ,setPermissionUser, getPermissionUser, deleteRoom, addRoom} from '@/api/room'
+import { getRooms, getLecturers ,updateRoomPermission, getPermissionUser, deleteRoom, addRoom, updateRoom, getApprovalResources,approveApprovalResource, rejectRestrictedResource, getNameByUid} from '@/api/room'
 export default {
   data() {
     return {
+      approvalOrders: [],
+      userCache: {},
       classrooms: [],
       dialogVisible: false,
       dialogTitle: '',
@@ -171,7 +214,7 @@ export default {
         capacity: 0,
         projector: false,
         multimedia: false,
-        isRestricted: false,
+        restricted: false,
         allowedUsers: [],
         url: '',
         description: ''
@@ -191,27 +234,42 @@ export default {
       allTeachersSelected: false,
       allStudentsSelected: false,
       searchQuery: '',
-      filteredUsers: []
+      filteredUsers: [],
+      approvalDialogVisible: false,
+      approvalOrders: []
     }
   },
   created() {
     this.fetchClassrooms()
-    this.fetchUsers()
+    this.fetchLecturers()
   },
   methods: {
+    getUserNameById(userId) {
+      if (this.userCache[userId]) {
+        return this.userCache[userId];
+      }
+      getNameByUid({ uid: userId })
+        .then(response => {
+          this.$set(this.userCache, userId, response.data.data);
+        })
+        .catch(error => {
+          console.error(`Error fetching username for ID ${userId}:`, error);
+          this.$set(this.userCache, userId, 'Unknown');
+        })
+      return 'Loading...';
+    },
     fetchClassrooms() {
      getRooms({
         page: this.pagination.currentPage,
-        limit: this.pagination.pageSize
+        size: this.pagination.pageSize
       })
         .then(response => {
           this.classrooms = response.data.data.rooms
-          console.log(this.classrooms)
           this.pagination.total = response.data.data.total
           this.classrooms.forEach(room => {
             getPermissionUser({ room_id: room.id })
               .then(permissionResponse => {
-                room.allowedUsers = permissionResponse.data.data[0]
+                room.allowedUsers = permissionResponse.data.data
               })
               .catch(error => {
                 console.error(`Error fetching permissions for room ${room.id}:`, error)
@@ -222,11 +280,10 @@ export default {
           console.error('Error fetching classrooms:', error)
         })
     },
-    fetchUsers() {
+    fetchLecturers() {
       getLecturers()
         .then(response => {
           this.users = response.data.data.lecturers
-          console.log(this.users);
         })
         .catch(error => {
           console.error('Error fetching users:', error)
@@ -234,14 +291,14 @@ export default {
     },
     handleAdd() {
       this.dialogTitle = 'Add Room'
-      this.currentClassroom = { id: null, roomName: '', roomType: 1, capacity: 0, projector: false, multimedia: false, isRestricted: false, url: '' }
+      this.currentClassroom = { id: null, roomName: '', roomType: 1, capacity: 0, projector: false, multimedia: false, restricted: false, url: '' }
       this.dialogVisible = true
     },
     handleEdit(row) {
     this.dialogTitle = 'Edit Room'
     this.currentClassroom = { ...row}
     this.dialogVisible = true
-  },
+    },
     handleDelete(row) {
       this.$confirm('Are you sure to delete this classroom?', 'Reminder', {
         confirmButtonText: 'Yes',
@@ -266,42 +323,40 @@ export default {
     },
     handleSave() {
       if (this.currentClassroom.id) {
-        // Update existing room
-        addRoom(this.currentClassroom)
+        updateRoom(this.currentClassroom.id, this.currentClassroom)
           .then(() => {
-            this.fetchClassrooms()
-            this.dialogVisible = false
-            this.$message.success('Room updated successfully!')
+            this.fetchClassrooms();
+            this.dialogVisible = false;
+            this.$message.success('Room updated successfully!');
           })
           .catch(error => {
-            console.error('Error updating room:', error)
-            this.$message.error('Failed to update room.')
-          })
+            console.error('Error updating room:', error);
+            this.$message.error('Failed to update room.');
+          });
       } else {
-        // Add new room
         addRoom(this.currentClassroom)
           .then(() => {
-            this.fetchClassrooms()
-            this.dialogVisible = false
-            this.$message.success('Room added successfully!')
+            this.fetchClassrooms();
+            this.dialogVisible = false;
+            this.$message.success('Room added successfully!');
           })
           .catch(error => {
-            console.error('Error adding room:', error)
-            this.$message.error('Failed to add room.')
-          })
+            console.error('Error adding room:', error);
+            this.$message.error('Failed to add room.');
+          });
       }
     },
     handleSetPermission(row) {
       this.currentClassroom= {...row}
+      this.currentPermission.allowedUsers = [...row.allowedUsers];
       this.filteredUsers = []
       this.permissionDialogVisible = true
     },
     handleSavePermission() {
-      setPermissionUser({
-        room_id: this.currentClassroom.id,
-        uids: this.currentPermission.allowedUsers
-      })
-        .then(() => {
+      updateRoomPermission({
+        id:this.currentClassroom.id,
+        permissionUsers:this.currentPermission.allowedUsers
+      }) .then(() => {
           this.fetchClassrooms() // Refresh list
           this.permissionDialogVisible = false
           this.$message.success('Permission saved successfully!')
@@ -311,27 +366,62 @@ export default {
           this.$message.error('Failed to save permission.')
         })
     },
-    handleUploadSuccess(response, file) {
-      this.currentClassroom.url = ''
-      this.$nextTick(() => {
-        this.currentClassroom.url = URL.createObjectURL(file.raw)
+    handleApproval(row) {
+      getApprovalResources(row.id)
+      .then(response => {
+        this.approvalOrders = response.data.data;
+        this.approvalDialogVisible = true;
       })
+      .catch(error => {
+        console.error('Error fetching approval orders:', error);
+        this.$message.error('Failed to fetch approval orders.');
+      });
     },
-    beforeUpload(file) {
-      const isJPG = file.type === 'image/jpeg'
-      const isPNG = file.type === 'image/png'
-      const isLt500K = file.size / 1024 / 1024 < 0.5
+    ApproveOrder(orderId) {
+      approveApprovalResource(orderId)
+        .then(() => {
+          this.$message.success(`Order ${orderId} approved successfully!`);
+          this.approvalOrders = this.approvalOrders.filter(order => order.id !== orderId);
+        })
+        .catch(error => {
+          console.error('Error approving order:', error);
+          this.$message.error('Failed to approve order.');
+        });
+    },
+    RejectOrder(orderId) {
+      rejectRestrictedResource(orderId)
+        .then(() => {
+          this.$message.success(`Order ${orderId} rejected successfully!`);
+          this.approvalOrders = this.approvalOrders.filter(order => order.id !== orderId);
+        })
+        .catch(error => {
+          console.error('Error rejecting order:', error);
+          this.$message.error('Failed to reject order.');
+        });
+    },
+    // handleUploadSuccess(response) {
+    //   if (response && response.url) {
+    //     this.$message.success('Image uploaded successfully!');
+    //     this.fetchClassrooms();
+    //   } else {
+    //     this.$message.error('Failed to upload image!');
+    //   }
+    // },
+    // beforeUpload(file) {
+    //   const isJPG = file.type === 'image/jpeg'
+    //   const isPNG = file.type === 'image/png'
+    //   const isLt500K = file.size / 1024 < 500
 
-      if (!isJPG && !isPNG) {
-        this.$message.error('Upload images only in JPG or PNG format!')
-        return false
-      }
-      if (!isLt500K) {
-        this.$message.error('Upload picture size cannot exceed 500KB!')
-        return false
-      }
-      return true
-    },
+    //   if (!isJPG && !isPNG) {
+    //     this.$message.error('Upload images only in JPG or PNG format!')
+    //     return false
+    //   }
+    //   if (!isLt500K) {
+    //     this.$message.error('Upload picture size cannot exceed 500KB!')
+    //     return false
+    //   }
+    //   return true
+    // },
     handleViewImage(row) {
       this.currentImage = row.url
       this.imageDialogVisible = true
@@ -347,8 +437,8 @@ export default {
       }
     },
     searchUser() {
-    const matchedUsers = this.users.filter(user => user.email.includes(this.searchQuery));//filter teachers
-      if (matchedUsers != null) {
+    const matchedUsers = this.users.filter(user => user.email === this.searchQuery);//filter teachers
+      if (matchedUsers.length > 0) {
         this.$confirm(`User ${matchedUsers[0].name} found. Do you want to add?`, 'User Found', {
           confirmButtonText: 'Yes',
           cancelButtonText: 'No',
@@ -362,9 +452,9 @@ export default {
           })
         })
       } else {
-        this.$alert('No user found. Please check the name and try again.', 'User Not Found', {
-          confirmButtonText: 'OK',
-          type: 'warning'
+        this.$message({
+          type: 'error',
+          message: 'Fail: No user found. Please check the email and try again.'
         })
       }
     },
@@ -387,13 +477,42 @@ export default {
       return null
     },
     handlePageChange(page) {
-      this.pagination.currentPage = page
-      this.fetchClassrooms()
+      this.pagination.currentPage = page;
+      this.fetchClassrooms();
     },
+
     handleSizeChange(size) {
-      this.pagination.pageSize = size
-      this.pagination.currentPage = 1
-      this.fetchClassrooms()
+      this.pagination.pageSize = size;
+      this.pagination.currentPage = 1;
+      this.fetchClassrooms();
+    },
+    formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString();
+    },
+    getRoomName(roomId) {
+      const room = this.classrooms.find(r => r.id === roomId);
+      return room ? room.roomName : "Unknown Room";
+    },
+    getStatusText(statusId) {
+      switch (statusId) {
+        case 1: return 'Pending';
+        case 2: return 'Ongoing';
+        case 3: return 'Done';
+        case 4: return 'Cancelled';
+        case 5: return 'Overdue';
+        default: return 'Unknown';
+      }
+    },
+    getStatusColor(statusId) {
+      switch (statusId) {
+        case 1: return 'orange';
+        case 2: return 'blue';
+        case 3: return 'green';
+        case 4: return 'gray';
+        case 5: return 'red';
+        default: return 'black';
+      }
     }
   }
 }

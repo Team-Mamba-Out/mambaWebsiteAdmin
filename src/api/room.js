@@ -52,5 +52,29 @@
   }
 
   export const getNameByUid = (params) =>{
-    return api.get(`/admin/getNameByUid`, { params });
+    return api.get(`/admin/getNameByUid/${params}`);
+  }
+
+  export const getMaintenance = (params) => {
+    return api.get('/maintenance/getMaintenance', { params});
+  }
+
+  export const addMaintenance = (request) => {
+    return api.post(`/admin/roomRecord`, request, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  export const deleteMaintenance = (id) => {
+    return api.delete(`/maintenance/${id}`)
+  }
+
+  export const getMaintenanceReports = (receiver,params) => {
+    return api.get(`/messages/getMessage/${receiver}`,{params});
+  }
+
+  export const readMessage = (id) => {
+    return api.post('/messages/read', id, {
+      headers: { 'Content-Type': 'application/json' }
+    })
   }

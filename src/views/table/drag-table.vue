@@ -1,15 +1,18 @@
 <template>
   <div class="app-container">
     <el-button type="primary" class="add-button" @click="handleAdd">Add New Room</el-button>
-    <el-table :data="classrooms" style="width: 1450px; margin-top: 20px;" border>
-      <el-table-column prop="id" label="Room ID" width="80" />
-      <el-table-column prop="roomName" label="Room Name" width="230" />
+    <el-button type="primary" class="report-button" @click="fetchMaintenanceReports">
+      Message Report
+    </el-button>
+    <el-table :data="classrooms" style="width: 1500px; margin-top: 20px;" border>
+      <el-table-column prop="id" label="Room ID" width="80" align="center"/>
+      <el-table-column prop="roomName" label="Room Name" width="225" />
       <el-table-column prop="image" label="Room Image" width="110">
         <template slot-scope="scope">
           <el-link type="primary" @click="handleViewImage(scope.row)">{{ "Click to view" }}</el-link>
         </template>
       </el-table-column>
-      <el-table-column prop="type" label="Room Type" width="150">
+      <el-table-column prop="type" label="Room Type" width="120">
         <template slot-scope="scope">
           <span v-if="scope.row.roomType === 1">Teaching Room</span>
           <span v-else-if="scope.row.roomType === 2">Meeting Room</span>
@@ -17,13 +20,13 @@
           <span v-else>Unknown</span>
         </template>
       </el-table-column>
-      <el-table-column prop="capacity" label="Capacity" width="100" />
-      <el-table-column label="projector" width="100">
+      <el-table-column prop="capacity" label="Capacity" width="80" />
+      <el-table-column label="projector" width="85">
         <template slot-scope="scope">
           {{ scope.row.projector? 'Yes' : 'No' }}
         </template>
       </el-table-column>
-      <el-table-column label="Multimedia" width="110">
+      <el-table-column label="Multimedia" width="95">
         <template slot-scope="scope">
           {{ scope.row.multimedia ? 'Yes' : 'No' }}
         </template>
@@ -40,10 +43,18 @@
           <el-button v-if="scope.row.requireApproval" size="mini" @click="handleApproval(scope.row)">handle approval</el-button>
         </template>
       </el-table-column>
-      <el-table-column label="Permission Setting" width="200">
+      <el-table-column prop="maintenance" label="Maintenance" width="150">
+        <template slot-scope="scope">
+          <span :style="{ color: scope.row.maintenance ? 'red' : 'green' }">
+            {{ scope.row.maintenance ? 'Under Maintenance' : 'Available' }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="Permission Setting" width="250">
         <template slot-scope="scope">
           <el-button size="mini" type="success" @click="handleEdit(scope.row)">Edit</el-button>
           <el-button size="mini" type="danger" @click="handleDelete(scope.row)">Delete</el-button>
+          <el-button size="mini" type="warning" style="display: block; margin-top: 5px; width: 135px; margin-left: 0px;" @click="handleMaintenance(scope.row)">Maintenance</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -90,20 +101,7 @@
             <el-option label="No" :value="false"></el-option>
           </el-select>
         </el-form-item>
-        <!-- <el-form-item label="Room Image">
-          <el-upload
-            class="upload-demo"
-            action="#"
-            :show-file-list="false"
-            :auto-upload="true"
-            :before-upload="beforeUpload"
-            :on-change="handleUploadSuccess"
-          >
-          <el-button size="small" type="primary">Selet Image</el-button>
-          </el-upload>
-          <img v-if="currentClassroom.url" :src="currentClassroom.url" class="classroom-image-preview">
-          <div class="el-upload__tip">Only jpg/png files with a maximum size of 500kb can be uploaded</div>
-        </el-form-item> -->
+
         <el-form-item label="Restriction">
           <el-checkbox v-model="currentClassroom.restricted">is Restricted</el-checkbox>
         </el-form-item>
@@ -155,7 +153,7 @@
 
     <el-dialog title="Approval Orders" :visible.sync="approvalDialogVisible" width="1100px">
       <el-table :data="approvalOrders" border style="width: 100%">
-        <el-table-column prop="id" label="Order ID" width="80" />
+        <el-table-column prop="id" label="Order ID" width="80" align="center"/>
         <el-table-column prop="userId" label="User Name" width="120">
           <template slot-scope="scope">
             {{ getUserNameById(scope.row.userId) }}
@@ -191,17 +189,113 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <el-dialog title="Maintenance Management" :visible.sync="maintenanceDialogVisible" width="800px">
+      <el-table :data="maintenanceRecords" border>
+        <el-table-column prop="id" label="ID" width="80" align="center"/>
+        <el-table-column prop="scheduledStart" label="Start Time" width="150">
+          <template slot-scope="scope">{{ formatDate(scope.row.scheduledStart) }}</template>
+        </el-table-column>
+        <el-table-column prop="scheduledEnd" label="End Time" width="150">
+          <template slot-scope="scope">{{ formatDate(scope.row.scheduledEnd) }}</template>
+        </el-table-column>
+        <el-table-column prop="description" label="Description" width="260" />
+        <el-table-column label="Action" width="120" align="center">
+          <template slot-scope="scope">
+            <el-button type="danger" size="mini" @click="deleteMaintenanceRecord(scope.row)">Delete</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        :current-page="maintenancePagination.currentPage"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="maintenancePagination.pageSize"
+        layout="total, sizes, prev, pager, next"
+        :total="maintenancePagination.total"
+        @current-change="handleMaintainPageChange"
+        @size-change="handleMaintainSizeChange"
+      />
+
+      <el-form label-width="100px" style="margin-top: 20px;">
+        <el-form-item label="Start Time">
+          <el-date-picker v-model="newMaintenance.newStartTime" type="datetime" placeholder="Select start time" />
+        </el-form-item>
+        <el-form-item label="End Time">
+          <el-date-picker v-model="newMaintenance.newEndTime" type="datetime" placeholder="Select end time" />
+        </el-form-item>
+        <el-form-item label="Reason">
+          <el-input v-model="newMaintenance.reason" type="textarea" />
+        </el-form-item>
+      </el-form>
+
+      <div slot="footer">
+        <el-button @click="maintenanceDialogVisible = false">Cancel</el-button>
+        <el-button type="primary" @click="addMaintenanceRecord">Add Maintenance and resign</el-button>
+      </div>
+    </el-dialog>
+
+    <el-dialog title="Message Reports" :visible.sync="reportDialogVisible" width="1300px">
+      <el-select v-model="selectedMessageType" placeholder="Select message type" @change="filterMessages">
+        <el-option label="All Messages" value="all"></el-option>
+        <el-option label="Maintenance Reports" value="maintenance"></el-option>
+        <el-option label="Other Messages" value="other"></el-option>
+      </el-select>
+      <el-table :data="filteredMessages" border>
+        <el-table-column prop="title" label="Report Title" width="250" align="center"/>
+        <el-table-column label="Room Name" prop="roomId" width="225px" align="center" >
+          <template slot-scope="scope">
+            {{ getRoomNameById(scope.row.roomId) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="text" label="Description" width="500"/>
+        <el-table-column prop="sender" label="Reported By" width="150">
+          <template slot-scope="scope">
+            {{ getSenderName(scope.row.sender) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Action" width="150">
+          <template slot-scope="scope">
+            <el-button v-if="scope.row.type === 1" size="mini" type="success" @click="handleMaintenanceReport(scope.row)">
+              Handle
+            </el-button>
+            <el-button v-if="scope.row.type === 0 || scope.row.type === 2" size="mini" type="info" @click="markAsRead(scope.row)">
+              Mark as Read
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-pagination
+        :current-page="reportPagination.currentPage"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="reportPagination.pageSize"
+        layout="total, sizes, prev, pager, next"
+        :total="reportPagination.total"
+        @current-change="handleReportPageChange"
+        @size-change="handleReportSizeChange"
+      />
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { getRooms, getLecturers ,updateRoomPermission, getPermissionUser, deleteRoom, addRoom, updateRoom, getApprovalResources,approveApprovalResource, rejectRestrictedResource, getNameByUid} from '@/api/room'
+import { getRooms, getLecturers ,updateRoomPermission, getPermissionUser, deleteRoom, addRoom, updateRoom, getApprovalResources,approveApprovalResource, rejectRestrictedResource, getNameByUid, getMaintenance, addMaintenance, deleteMaintenance, getMaintenanceReports, readMessage} from '@/api/room'
 export default {
   data() {
     return {
       approvalOrders: [],
       userCache: {},
       classrooms: [],
+      maintenanceDialogVisible: false,
+      currentRoomId: null,
+      currentRoomName: '',
+      maintenanceRecords: [],
+      newMaintenance: {
+        roomId: null,
+        newStartTime: '',
+        newEndTime: '',
+        reason: ''
+      },
       dialogVisible: false,
       dialogTitle: '',
       currentClassroom: {
@@ -218,6 +312,11 @@ export default {
         allowedUsers: [],
         url: '',
         description: ''
+      },
+      maintenancePagination: {
+        currentPage: 1,
+        pageSize: 10,
+        total: 0
       },
       pagination: {
         currentPage: 1,
@@ -236,7 +335,17 @@ export default {
       searchQuery: '',
       filteredUsers: [],
       approvalDialogVisible: false,
-      approvalOrders: []
+      approvalOrders: [],
+      reportDialogVisible: false,
+      maintenanceReports: [],
+      reportPagination: {
+        currentPage: 1,
+        pageSize: 10,
+        total: 0
+      },
+      currentUserId: 1,
+      filteredMessages: [],
+      selectedMessageType: "all",
     }
   },
   created() {
@@ -244,11 +353,45 @@ export default {
     this.fetchLecturers()
   },
   methods: {
+    filterMessages() {
+      if (this.selectedMessageType === "all") {
+        this.filteredMessages = this.maintenanceReports;
+      } else if (this.selectedMessageType === "maintenance") {
+        this.filteredMessages = this.maintenanceReports.filter(msg => msg.type === 1);
+      } else if (this.selectedMessageType === "other") {
+        this.filteredMessages = this.maintenanceReports.filter(msg => msg.type === 0);
+      }
+    },
+    markAsRead(row){
+      readMessage({"id": row.id})
+        .then(() => {
+        this.$message.success('Message marked as read successfully!');
+        this.fetchMaintenanceReports()
+        this.filterMessages();
+      })
+      .catch(error => {
+
+        console.error('Error marking message as read:', error);
+        this.$message.error('Failed to mark message as read.');
+      });
+
+    },
+    getSenderName(sender) {
+      if (!sender) return "Unknown";
+      return sender.includes(";") ? sender.split(";").pop().trim() : sender;
+    },
+    formatDateToISO(date) {
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).replace(/\//g, '-').replace(' ', 'T');
+    },
     getUserNameById(userId) {
       if (this.userCache[userId]) {
         return this.userCache[userId];
       }
-      getNameByUid({ uid: userId })
+      getNameByUid(userId)
         .then(response => {
           this.$set(this.userCache, userId, response.data.data);
         })
@@ -257,6 +400,10 @@ export default {
           this.$set(this.userCache, userId, 'Unknown');
         })
       return 'Loading...';
+    },
+    getRoomNameById(roomId) {
+      const room = this.classrooms.find(room => room.id === roomId);
+      return room ? room.roomName : 'Unknown Room';
     },
     fetchClassrooms() {
      getRooms({
@@ -357,7 +504,7 @@ export default {
         id:this.currentClassroom.id,
         permissionUsers:this.currentPermission.allowedUsers
       }) .then(() => {
-          this.fetchClassrooms() // Refresh list
+          this.fetchClassrooms()
           this.permissionDialogVisible = false
           this.$message.success('Permission saved successfully!')
         })
@@ -391,7 +538,8 @@ export default {
     RejectOrder(orderId) {
       rejectRestrictedResource(orderId)
         .then(() => {
-          this.$message.success(`Order ${orderId} rejected successfully!`);
+          this.$message.success(`Order ${orderId} rejected
+          successfully!`);
           this.approvalOrders = this.approvalOrders.filter(order => order.id !== orderId);
         })
         .catch(error => {
@@ -399,29 +547,6 @@ export default {
           this.$message.error('Failed to reject order.');
         });
     },
-    // handleUploadSuccess(response) {
-    //   if (response && response.url) {
-    //     this.$message.success('Image uploaded successfully!');
-    //     this.fetchClassrooms();
-    //   } else {
-    //     this.$message.error('Failed to upload image!');
-    //   }
-    // },
-    // beforeUpload(file) {
-    //   const isJPG = file.type === 'image/jpeg'
-    //   const isPNG = file.type === 'image/png'
-    //   const isLt500K = file.size / 1024 < 500
-
-    //   if (!isJPG && !isPNG) {
-    //     this.$message.error('Upload images only in JPG or PNG format!')
-    //     return false
-    //   }
-    //   if (!isLt500K) {
-    //     this.$message.error('Upload picture size cannot exceed 500KB!')
-    //     return false
-    //   }
-    //   return true
-    // },
     handleViewImage(row) {
       this.currentImage = row.url
       this.imageDialogVisible = true
@@ -485,6 +610,111 @@ export default {
       this.pagination.pageSize = size;
       this.pagination.currentPage = 1;
       this.fetchClassrooms();
+    },
+
+    handleMaintainPageChange(page) {
+      this.maintenancePagination.currentPage = page;
+      this.getMaintenanceList(this.currentRoomId);
+    },
+
+    handleMaintainSizeChange(size) {
+      this.maintenancePagination.pageSize = size;
+      this.maintenancePagination.currentPage = 1;
+      this.getMaintenanceList(this.currentRoomId);
+    },
+
+    handleReportPageChange(page) {
+      this.reportPagination.currentPage = page;
+      this.fetchMaintenanceReports();
+    },
+
+    handleReportSizeChange(size) {
+      this.reportPagination.pageSize = size;
+      this.reportPagination.currentPage = 1;
+      this.fetchMaintenanceReports();
+    },
+    handleMaintenanceReport(report) {
+      this.markAsRead(report)
+      this.reportDialogVisible = false;
+      this.handleMaintenance({ id: report.roomId });
+    },
+    fetchMaintenanceReports() {
+      getMaintenanceReports(this.currentUserId,{
+        page: this.reportPagination.currentPage,
+        size: this.reportPagination.pageSize
+      })
+      .then(response => {
+        const allMessages = response.data.data.messages;
+        const unreadMessages = allMessages.filter(msg => msg.read === false);
+        this.maintenanceReports = unreadMessages;
+        this.reportPagination.total = response.data.data.total;
+        this.reportDialogVisible = true;
+        this.filterMessages();
+      })
+      .catch(error => {
+        console.error('Error fetching maintenance reports:', error);
+        this.$message.error('Failed to fetch maintenance reports.');
+      });
+    },
+    handleMaintenance(row) {
+      this.currentRoomId = row.id;
+      this.newMaintenance.roomId = this.currentRoomId;
+      this.getMaintenanceList(row.id);
+      this.maintenanceDialogVisible = true;
+    },
+    getMaintenanceList(roomId){
+      getMaintenance({roomId: roomId,
+    page: this.maintenancePagination.currentPage,
+    size: this.maintenancePagination.pageSize })
+        .then(response => {
+          this.maintenanceRecords = response.data.data.maintenanceList;
+          this.maintenancePagination.total = response.data.data.total;
+        })
+        .catch(error => {
+          console.error('Error fetching maintenance records:', error);
+          this.$message.error('Failed to fetch maintenance records.');
+        });
+    },
+    addMaintenanceRecord() {
+    if (!this.newMaintenance.newStartTime || !this.newMaintenance.newEndTime || !this.newMaintenance.reason) {
+      this.$message.error('Please fill in all maintenance details.');
+      return;
+    }
+    this.newMaintenance.newStartTime = this.formatDateToISO(this.newMaintenance.newStartTime)
+    this.newMaintenance.newEndTime = this.formatDateToISO(this.newMaintenance.newEndTime)
+      addMaintenance(this.newMaintenance)
+      .then(() => {
+        this.$message.success('Maintenance record added successfully!');
+        this.fetchClassrooms();
+        this.getMaintenanceList(this.currentRoomId);
+        this.newMaintenance = { startTime: '', endTime: '', reason: '' };
+      }).catch(error => {
+        console.error('Error adding maintenance record:', error);
+        this.$message.error('Failed to add maintenance record.');
+      });
+    },
+    deleteMaintenanceRecord(row){
+      this.$confirm('Are you sure to delete this record?', 'Reminder', {
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'Cancel',
+        type: 'warning'
+      }).then(() => {
+        deleteMaintenance(row.id)
+          .then(() => {
+            this.fetchClassrooms()
+            this.getMaintenanceList(this.currentRoomId)
+            this.$message.success('Record deleted successfully!')
+          })
+          .catch(error => {
+            console.error('Error deleting record:', error)
+            this.$message.error('Failed to delete record.')
+          })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: 'Delete canceled'
+        })
+      })
     },
     formatDate(dateString) {
     if (!dateString) return 'N/A';

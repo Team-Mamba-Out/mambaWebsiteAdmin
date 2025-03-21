@@ -1,89 +1,106 @@
 <template>
   <div class="app-container">
     <div class="filter-container">
-      <el-input v-model="listQuery.Order_Id" placeholder="Order_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
-      <el-input v-model="listQuery.Room_Id" placeholder="Room_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
-      <el-input v-model="listQuery.User_Id" placeholder="User_Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
+      <el-input v-model="listQuery.Order_Id" placeholder="Order Id" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
+      <el-input v-model="listQuery.Room_Name" placeholder="Room Name" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
+      <el-input v-model="listQuery.User_Name" placeholder="User Name" style="width: 150px;" class="filter-item" @keyup.enter.native="handleFilter" />
       <el-button v-waves class="filter-item" type="primary" icon="el-icon-search" @click="handleFilter">
         Search
+      </el-button>
+      <el-button v-waves class="filter-item" type="primary" icon="el-icon-plus" @click="handleAdd">
+        Add Order
       </el-button>
       <el-button v-waves :loading="downloadLoading" class="filter-item" type="primary" icon="el-icon-download" @click="handleDownload">
         Export
       </el-button>
     </div>
 
-    <el-table
-      :key="tableKey"
-      v-loading="listLoading"
-      :data="filterList"
-      fit
-      style="width: 1390px;"
-      @sort-change="sortChange"
-    >
-      <el-table-column label="Order Id" prop="id" align="center" width="110">
-        <template slot-scope="{row}">
-          <span>{{ row.id }}</span>
+    <el-table :data="filterList" style="width: 1340px;" border>
+      <el-table-column label="Order Id" prop="id" align="center" width="110" />
+      <el-table-column label="Room Name" prop="roomId" width="230px" align="center" >
+        <template slot-scope="scope">
+          {{ getRoomNameById(scope.row.roomId) }}
         </template>
       </el-table-column>
-      <el-table-column label="Record Time" width="180px" align="center">
-        <template slot-scope="{row}">
-          <span>{{ row.record_time | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
+      <el-table-column label="User Name" prop="userId" width="130px" align="center" >
+        <template slot-scope="scope">
+          {{ getUserNameById(scope.row.userId) }}
         </template>
       </el-table-column>
-      <el-table-column label="Room Id" width="120px" align="center">
-        <template slot-scope="{row}">
-          <span>{{ row.room_id }}</span>
+      <el-table-column label="Record Time" prop="recordTime" width="180px" align="center">
+        <template slot-scope="scope">
+          {{ formatDate(scope.row.recordTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="Room Type" width="150px" align="center">
-        <template slot-scope="{row}">
-          <span>{{ row.room_type }}</span>
+      <el-table-column label="Start Time" prop="startTime" width="180px" align="center">
+        <template slot-scope="scope">
+          {{ formatDate(scope.row.startTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="User Id" width="130px" align="center">
-        <template slot-scope="{row}">
-          <span>{{ row.user_id }}</span>
+      <el-table-column label="End Time" prop="endTime" width="180px" align="center">
+        <template slot-scope="scope">
+          {{ formatDate(scope.row.endTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="Start Time" width="180px" align="center">
-        <template slot-scope="{row}">
-          <span>{{ row.start_time | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
+      <el-table-column label="Status" class-name="status-col" prop="statusId" width="120">
+        <template slot-scope="scope">
+          <span :style="{ color: getStatusColor(scope.row.statusId) }">
+            {{ getStatusText(scope.row.statusId) }}
+          </span>
         </template>
       </el-table-column>
-      <el-table-column label="End Time" width="180px" align="center">
-        <template slot-scope="{row}">
-          <span>{{ row.end_time | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="Status" class-name="status-col" width="120">
-        <template slot-scope="{row}">
-          <el-tag :type="row.status === 'completed' ? 'success' : 'warning'">
-            {{ row.statu }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="Actions" align="center" width="250" class-name="small-padding fixed-width">
-        <template slot-scope="{row}">
-          <el-button size="mini" type="danger" @click="handleDelete(row)">
-            Delete
+      <el-table-column label="Actions" align="center" width="220" class-name="small-padding fixed-width">
+        <template slot-scope="scope">
+          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">
+            Force Delete and resign
           </el-button>
         </template>
       </el-table-column>
     </el-table>
+    <el-pagination
+      :current-page="pagination.currentPage"
+      :page-size="pagination.pageSize"
+      :total="total"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      layout="total, sizes, prev, pager, next, jumper"
+      style="margin-top: 20px; text-align: center;"
+    />
 
-    <pagination v-show="total>0" :total="total" :page.sync="listQuery.page" :limit.sync="listQuery.limit" @pagination="getList" />
+    <el-dialog title="Add New Order" :visible.sync="dialogFormVisible" width="500px">
+      <el-form :model="newOrder" label-width="120px" style="margin-left: -30px;">
+        <el-form-item label="Room" required>
+          <el-select v-model="newOrder.roomId" placeholder="Select Room" style="width: 100%;">
+            <el-option v-for="room in classrooms" :key="room.id" :label="room.roomName" :value="room.id"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="User ID" required>
+          <el-input v-model="newOrder.userId" placeholder="Enter User ID" style="width: 100%;"></el-input>
+        </el-form-item>
+        <el-form-item label="Start Time" required>
+          <el-date-picker v-model="newOrder.startTime" type="datetime" placeholder="Select Start Time" style="width: 100%;"></el-date-picker>
+        </el-form-item>
+        <el-form-item label="End Time" required>
+          <el-date-picker v-model="newOrder.endTime" type="datetime" placeholder="Select End Time" style="width: 100%;"></el-date-picker>
+        </el-form-item>
+        <el-form-item label="Comment" >
+          <el-input v-model="newOrder.comment" placeholder="Enter Comment(optional)"  type="textarea" :rows="4"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogFormVisible = false">Cancel</el-button>
+        <el-button type="primary" @click="addRecord">Confirm</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { fetchOrders, deleteOrder } from '@/api/order'
+import { fetchOrders, deleteOrders, getNameByUid,  getRooms, createRecord} from '@/api/order'
 import waves from '@/directive/waves'
-import { parseTime } from '@/utils'
-import Pagination from '@/components/Pagination'
 
 export default {
   name: 'ComplexTable',
-  components: { Pagination },
   directives: { waves },
   filters: {
     statusFilter(status) {
@@ -96,104 +113,180 @@ export default {
   },
   data() {
     return {
-      total: 100,
+      total: 0,
+      classrooms: [],
+      userCache: {},
       listQuery: {
         Order_Id: '',
         Room_Id: '',
-        User_Id: '',
-        page: 1,
-        limit: 10
+      },
+      dialogFormVisible: false,
+      newOrder: {
+        roomId: '',
+        userId: '',
+        startTime: '',
+        endTime: '',
+        hasCheckedIn: false,
+        comment: ''
       },
       list: [],
       filterList: [],
-      statusOptions: ['completed', 'incompleted'],
-      dialogFormVisible: false,
       dialogStatus: '',
-      textMap: {
-        update: 'Edit',
-        create: 'Create'
-      },
-      downloadLoading: false
+      downloadLoading: false,
+      pagination: {
+      currentPage: 1,
+      pageSize: 10
+      }
     }
   },
   created() {
+    this.fetchRoom()
     this.getList()
   },
   methods: {
-    async getList() {
-      this.listLoading = true
-      try {
-        const response = await fetchOrders({
-          id: this.listQuery.Order_Id || null,
-          roomId: this.listQuery.Room_Id || null,
-          userId: this.listQuery.User_Id || null,
-          startTime: null,
-          endTime: null,
-          hasCheckedIn: null,
-          isCancelled: null,
-          page: this.listQuery.page,
-          size: this.listQuery.limit
-        })
-        this.list = response.data.data.records.filter(order => !order.isCancelled).map(order => ({ ...order, status: order.hasCheckedIn ? 'completed' : 'incompleted' })).sort((a, b) => a.id - b.id)
-        this.total = this.list.length
-        this.filterList = this.list
-        if (this.listQuery.page > Math.ceil(this.total / this.listQuery.limit)) {
-          this.listQuery.page = 1
-        }
-        const start = (this.listQuery.page - 1) * this.listQuery.limit
-        const end = start + this.listQuery.limit
-        this.filterList = this.list.slice(start, end)
-        this.total = this.list.length
-      } catch (error) {
-        console.error('The record failed', error)
-      } finally {
-        this.listLoading = false
+    formatDateToISO(date) {
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).replace(/\//g, '-').replace(' ', 'T');
+    },
+    getStatusText(statusId) {
+      switch (statusId) {
+        case 1: return 'Pending';
+        case 2: return 'Ongoing';
+        case 3: return 'Done';
+        case 4: return 'Cancelled';
+        case 5: return 'Overdue';
+        default: return 'Unknown';
       }
+    },
+    getStatusColor(statusId) {
+      switch (statusId) {
+        case 1: return 'orange';
+        case 2: return 'blue';
+        case 3: return 'green';
+        case 4: return 'gray';
+        case 5: return 'red';
+        default: return 'black';
+      }
+    },
+    handleAdd(){
+      this.newOrder = { roomId: '',  userId: '', startTime: '', endTime: '', hasCheckedIn: false, comment: ''}
+      this.dialogFormVisible= true
+    },
+    fetchRoom(){
+      getRooms()
+        .then(response => {
+          this.classrooms = response.data.data.rooms
+        })
+        .catch(error => {
+          console.error('Error fetching classrooms:', error)
+        })
+    },
+    addRecord(){
+      this.newOrder.startTime = this.formatDateToISO(this.newOrder.startTime)
+      this.newOrder.endTime = this.formatDateToISO(this.newOrder.endTime)
+      createRecord(this.newOrder)
+          .then(() => {
+            this.getList();
+            this.dialogFormVisible = false;
+            this.$message.success('Record added successfully!');
+          })
+          .catch(error => {
+            console.error('Error adding record:', error);
+            this.$message.error('Failed to add record.');
+          });
+    },
+    getRoomNameById(roomId) {
+      const room = this.classrooms.find(room => room.id === roomId);
+      return room ? room.roomName : 'Unknown Room';
+    },
+    getUserNameById(userId) {
+      if (this.userCache[userId]) {
+        return this.userCache[userId];
+      }
+      getNameByUid(userId)
+        .then(response => {
+          this.$set(this.userCache, userId, response.data.data);
+        })
+        .catch(error => {
+          console.error(`Error fetching username for ID ${userId}:`, error);
+          this.$set(this.userCache, userId, 'Unknown');
+        })
+      return 'Loading...';
+    },
+    getList() {
+      fetchOrders({
+        page: this.pagination.currentPage,
+        size: this.pagination.pageSize
+      })
+        .then(response => {
+          this.list = response.data.data.records
+          this.total = response.data.data.total
+          this.filterList = this.list
+        })
+        .catch(error => {
+          console.error('Error fetching records:', error)
+        })
     },
     handleFilter() {
-      if (!this.listQuery.Order_Id && !this.listQuery.Room_Id && !this.listQuery.User_Id) {
-        this.total = this.list.length
-        this.getList()
-        return
+      const queryId = this.listQuery.Order_Id
+      const queryUser = this.listQuery.User_Name
+      const queryRoom = this.listQuery.Room_Name
+      if (!queryId && !queryUser && !queryRoom) {
+        this.getList();
+        return;
       }
-      this.filterList = this.list.filter(item =>
-        (!this.listQuery.Order_Id || item.id === this.listQuery.Order_Id) &&
-        (!this.listQuery.Room_Id || item.room_id === this.listQuery.Room_Id) &&
-        (!this.listQuery.User_Id || item.user_id === this.listQuery.User_Id)
-      )
-      this.total = this.filterList.length
+      this.filterList = this.list.filter(item => {
+        const matchesId = !queryId || String(item.id).includes(queryId);
+        const matchesUser = !queryUser || this.getUserNameById(item.userId).includes(queryUser);
+        const matchesRoom = !queryRoom || this.getRoomNameById(item.roomId).includes(queryRoom);
+
+        return matchesId && matchesUser && matchesRoom;
+      });
+      this.total = this.filterList.length;
     },
-    async handleDelete(row) {
-      try {
-        await this.$confirm('Are you sure to delete this order?', 'Warning', {
+
+    handleDelete(row) {
+      this.$prompt('Please enter the reason for deletion', 'Reminder', {
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'Cancel',
+        inputPattern: /.+/,
+        inputErrorMessage: 'Reason cannot be empty'
+      }).then(({ value }) => {
+        this.$confirm('Are you sure to delete this record?', 'Confirmation', {
           confirmButtonText: 'Yes',
-          cancelButtonText: 'No',
+          cancelButtonText: 'Cancel',
           type: 'warning'
-        })
-
-        await deleteOrder(row.id)
-
-        await this.getList()
-
-        this.$notify({
-          title: 'Success',
-          message: 'Order Deleted Successfully',
-          type: 'success',
-          duration: 2000
-        })
-      } catch (error) {
-        console.error('Error deleting order:', error)
-        this.$notify.error({
-          title: 'Error',
-          message: 'Failed to delete order'
-        })
-      }
+        }).then(() => {
+          deleteOrders(row.id, value)
+            .then(() => {
+              this.getList();
+              this.$message.success('Record deleted successfully!');
+            })
+            .catch(error => {
+              console.error('Error deleting record:', error);
+              this.$message.error('Failed to delete record.');
+            });
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: 'Delete canceled'
+          });
+        });
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: 'Delete canceled'
+        });
+      });
     },
     handleDownload() {
       this.downloadLoading = true
       import('@/vendor/Export2Excel').then(excel => {
-        const tHeader = ['Order Id', 'Record Time', 'Room Id', 'Room Type', 'User Id', 'Start Time', 'End Time', 'Status']
-        const filterVal = ['id', 'record_time', 'room_id', 'room_type', 'user_id', 'start_time', 'end_time', 'status']
+        const tHeader = ['Order Id', 'Record Time', 'Room Id', 'User Id', 'Start Time', 'End Time', 'Status']
+        const filterVal = ['id', 'recordTime', 'roomId', 'userId', 'startTime', 'endTime', 'status']
         const data = this.formatJson(filterVal, this.filterList)
         excel.export_json_to_excel({
           header: tHeader,
@@ -203,15 +296,35 @@ export default {
         this.downloadLoading = false
       })
     },
-    formatJson(filterVal) {
-      return this.list.map(v => filterVal.map(j => {
-        if (j === 'record_time' || j === 'start_time' || j === 'end_time') {
-          return parseTime(v[j])
+    formatJson(filterVal, data) {
+      return data.map(v => filterVal.map(j => {
+        if (j === 'recordTime' || j === 'startTime' || j === 'endTime') {
+          return this.formatDate(v[j]);
+        } else if (j === 'roomId') {
+          return this.getRoomNameById(v[j]);
+        } else if (j === 'userId') {
+          return this.getUserNameById(v[j]);
+        } else if (j === 'statusId') {
+          return this.getStatusText(v[j]);
         } else {
-          return v[j]
+          return v[j];
         }
-      }))
+      }));
+    },
+    formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString();
+    },
+    handleSizeChange(val) {
+      this.pagination.pageSize = val
+      this.getList()
+    },
+    handleCurrentChange(val) {
+      this.pagination.currentPage = val
+      this.getList()
     }
   }
 }
 </script>
+
+

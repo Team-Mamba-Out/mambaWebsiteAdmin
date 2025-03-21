@@ -1,19 +1,34 @@
 import axios from 'axios'
 
-const BASE_URL = '/api/orders'
+const api = axios.create({
+  baseURL: 'http://localhost:8080',
+});
 
-export function fetchOrders(params) {
-  return axios.get(`${BASE_URL}/getRecords`, { params })
+export const fetchOrders = (params) => {
+  return api.get(`/records/getRecords`, { params })
 }
 
-export function deleteOrder(id) {
-  return axios.delete(`${BASE_URL}/${id}`)
+export const deleteOrders = (id, reason) => {
+  return api.delete(`/admin/cancelRecordAndReassign/${id}`, {
+      data: reason,
+      headers: { 'Content-Type': 'application/json' }
+  });
+};
+
+export const getNameByUid = (params) =>{
+  return api.get(`/admin/getNameByUid/${params}`);
 }
 
-export function countCompletedOrders() {
-  return axios.get(`${BASE_URL}/count/completed`)
-}
+export const getRooms = (params) => {
+  return api.get('/rooms/getRooms', { params });
+};
 
-export function countOrders() {
-  return axios.get(`${BASE_URL}/count`)
-}
+export const createRecord = (data) => {
+  return api.post('/records', data, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+};
+
+
+
+

@@ -1,7 +1,7 @@
 <template>
   <el-row :gutter="40" class="panel-group">
     <el-col :xs="12" :sm="12" :lg="6" class="card-panel-col">
-      <div class="card-panel" @click="handleSetLineChartData('newVisitis')">
+      <div class="card-panel">
         <div class="card-panel-icon-wrapper icon-people">
           <svg-icon icon-class="classroom" class-name="card-panel-icon" />
         </div>
@@ -14,7 +14,7 @@
       </div>
     </el-col>
     <el-col :xs="12" :sm="12" :lg="6" class="card-panel-col">
-      <div class="card-panel" @click="handleSetLineChartData('messages')">
+      <div class="card-panel">
         <div class="card-panel-icon-wrapper icon-message">
           <svg-icon icon-class="order" class-name="card-panel-icon" />
         </div>
@@ -27,7 +27,7 @@
       </div>
     </el-col>
     <el-col :xs="12" :sm="12" :lg="6" class="card-panel-col">
-      <div class="card-panel" @click="handleSetLineChartData('purchases')">
+      <div class="card-panel">
         <div class="card-panel-icon-wrapper icon-money">
           <svg-icon icon-class="users" class-name="card-panel-icon" />
         </div>
@@ -40,7 +40,7 @@
       </div>
     </el-col>
     <el-col :xs="12" :sm="12" :lg="6" class="card-panel-col">
-      <div class="card-panel" @click="handleSetLineChartData('shoppings')">
+      <div class="card-panel">
         <div class="card-panel-icon-wrapper icon-shopping">
           <svg-icon icon-class="completed" class-name="card-panel-icon" />
         </div>
@@ -56,10 +56,9 @@
 </template>
 
 <script>
+import {countRooms, countRecords, countUsers, countCompletedRecords} from '@/api/personal'
 import CountTo from 'vue-count-to'
-import { countCompletedOrders, countOrders } from '@/api/order'
-import { countRooms } from '@/api/room'
-import { countUsers } from '@/api/userCount'
+
 
 export default {
   components: {
@@ -76,28 +75,48 @@ export default {
     }
   },
   created() {
-    this.getStats
+    this.getRoomCount();
+    this.getRecordCount();
+    this.getUserCount();
+    this.getcompletedRecordCount();
   },
   methods: {
-    async getStats() {
-      try {
-        const [classroomRes, orderRes, userRes, completedOrderRes] = await Promise.all([
-          countRooms(),
-          countOrders(),
-          countUsers(),
-          countCompletedOrders()
-        ])
-        this.stats.classroom = classroomRes.data.data
-        this.stats.existorder = orderRes.data.data
-        this.stats.usernumber = userRes.data.data
-        this.stats.completeorder = completedOrderRes.data.data
-      } catch (error) {
-        console.error('Failed to fetch stats:', error)
-      }
+    getRoomCount(){
+       countRooms()
+       .then(response => {
+          this.stats.classroom = response.data.data;
+        })
+        .catch(error => {
+          console.error(`Error fetching classroom count`, error);
+        })
     },
-    handleSetLineChartData(type) {
-      this.$emit('handleSetLineChartData', type)
-    }
+    getRecordCount(){
+       countRecords()
+       .then(response => {
+          this.stats.existorder = response.data.data;
+        })
+        .catch(error => {
+          console.error(`Error fetching record count`, error);
+        })
+    },
+    getUserCount(){
+       countUsers()
+       .then(response => {
+          this.stats.usernumber = response.data.data;
+        })
+        .catch(error => {
+          console.error(`Error fetching user count`, error);
+        })
+    },
+    getcompletedRecordCount(){
+       countCompletedRecords()
+       .then(response => {
+          this.stats.completeorder = response.data.data;
+        })
+        .catch(error => {
+          console.error(`Error fetching record count`, error);
+        })
+    },
   }
 }
 </script>

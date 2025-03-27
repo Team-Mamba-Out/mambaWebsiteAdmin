@@ -8,9 +8,8 @@ export const fetchOrders = (params) => {
   return api.get(`/records/getRecords`, { params })
 }
 
-export const deleteOrders = (id, reason) => {
-  return api.delete(`/admin/cancelRecordAndReassign/${id}`, {
-      data: reason,
+export const deleteandReassignOrders = (id, reason) => {
+  return api.post(`/admin/cancelRecordAndReassign/${id}`, reason, {
       headers: { 'Content-Type': 'application/json' }
   });
 };
@@ -25,6 +24,12 @@ export const getRooms = (params) => {
 
 export const createRecord = (data) => {
   return api.post('/records', data, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+};
+
+export const normalCancelByAdmin = (id, reason) => {
+  return api.post(`/admin/normalCancel/${id}`, reason,{
     headers: { 'Content-Type': 'application/json' }
   });
 };

@@ -3,32 +3,33 @@
 import Layout from '@/layout'
 
 const tableRouter = {
-  path: '/table',
+  path: '/check',
   component: Layout,
-  redirect: '/table/complex-table',
-  name: 'Table',
+  redirect: '/check/Record',
+  name: 'Check',
   meta: {
-    title: 'Table',
-    icon: 'table'
+    title: 'Check',
+    icon: 'table',
+    roles: ['supplier','admin','employee']
   },
   children: [
     {
-      path: 'drag-table',
-      component: () => import('@/views/table/drag-table'),
-      name: 'DragTable',
-      meta: { title: '1' }
+      path: 'Room',
+      component: () => import('@/views/table/Room'),
+      name: 'Room',
+      meta: { title: 'Room', roles: ['admin']}
     },
+    // {
+    //   path: 'inline-edit-table',
+    //   component: () => import('@/views/table/inline-edit-table'),
+    //   name: 'InlineEditTable',
+    //   meta: { title: '2' }
+    // },
     {
-      path: 'inline-edit-table',
-      component: () => import('@/views/table/inline-edit-table'),
-      name: 'InlineEditTable',
-      meta: { title: '2' }
-    },
-    {
-      path: 'complex-table',
-      component: () => import('@/views/table/complex-table'),
-      name: 'ComplexTable',
-      meta: { title: 'Record' }
+      path: 'Record',
+      component: () => import('@/views/table/Record'),
+      name: 'Record',
+      meta: { title: 'Record',roles: ['admin'] }
     }
   ]
 }

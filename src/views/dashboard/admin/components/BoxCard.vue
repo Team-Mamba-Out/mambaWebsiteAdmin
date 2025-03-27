@@ -1,24 +1,19 @@
 <template>
-  <el-card class="box-card-component" style="margin-left:8px;">
+  <el-card class="box-card-component" style="margin-left:8px; height: 400px;" >
     <div slot="header" class="box-card-header">
       <img src="https://wpimg.wallstcn.com/e7d23d71-cf19-4b90-a1cc-f56af8c0903d.png">
     </div>
     <div style="position:relative;">
-      <pan-thumb :image="avatar" class="panThumb" />
       <mallki class-name="mallki-text" text="Administrator" />
       <div style="padding-top:35px;" class="progress-item">
-        <span>Name: {{ userInfo.name || 'N/A' }}</span>
+        <span>Name: {{ name || 'N/A' }}</span>
       </div>
       <div class="progress-item">
-        <span>Uid: {{ userInfo.uid || 'N/A' }}</span>
+        <span>Email: {{ email || 'N/A' }}</span>
 
       </div>
       <div class="progress-item">
-        <span>Email: {{ userInfo.email || 'N/A' }}</span>
-
-      </div>
-      <div class="progress-item">
-        <span>Phone: {{ userInfo.phone || 'N/A' }}</span>
+        <span>Phone: {{ phone || 'N/A' }}</span>
 
       </div>
     </div>
@@ -26,7 +21,7 @@
 </template>
 
 <script>
-import { fetchAdmins } from '@/api/admin'
+import store from '@/store'
 import { mapGetters } from 'vuex'
 import PanThumb from '@/components/PanThumb'
 import Mallki from '@/components/TextHoverEffect/Mallki'
@@ -45,32 +40,23 @@ export default {
   },
   data() {
     return {
-      userInfo: {}
+      AdminInfo: []
     }
   },
   computed: {
     ...mapGetters([
       'name',
-      'avatar',
-      'roles'
+      'role',
+      'email',
     ])
   },
   created() {
-    this.getAdminInfo()
+console.log( store.getters.name);
+
   },
 
   methods: {
-    async getAdminInfo() {
-      try {
-        const response = await fetchAdmins()
-        if (response.data && response.data.data.length > 0) {
-          this.userInfo = response.data.data[0]
-          console.warn('No admin data found.')
-        }
-      } catch (error) {
-        console.error('Failed to fetch admin data:', error)
-      }
-    }
+
   }
 }
 </script>
@@ -103,21 +89,6 @@ export default {
     right: 0px;
     font-size: 20px;
     font-weight: bold;
-  }
-  .panThumb {
-    z-index: 100;
-    height: 70px!important;
-    width: 70px!important;
-    position: absolute!important;
-    top: -45px;
-    left: 0px;
-    border: 5px solid #ffffff;
-    background-color: #fff;
-    margin: auto;
-    box-shadow: none!important;
-    ::v-deep .pan-info {
-      box-shadow: none!important;
-    }
   }
   .progress-item {
     margin-bottom: 10px;

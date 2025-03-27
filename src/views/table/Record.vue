@@ -15,44 +15,48 @@
       </el-button>
     </div>
 
-    <el-table :data="filterList" style="width: 1340px;" border>
-      <el-table-column label="Order Id" prop="id" align="center" width="110" />
+    <el-table :data="filterList" style="width: 1450px;" border>
+      <el-table-column label="Order Id" prop="id" align="center" width="120" />
       <el-table-column label="Room Name" prop="roomId" width="230px" align="center" >
         <template slot-scope="scope">
           {{ getRoomNameById(scope.row.roomId) }}
         </template>
       </el-table-column>
-      <el-table-column label="User Name" prop="userId" width="130px" align="center" >
+      <el-table-column label="User Name" prop="userId" width="160px" align="center" >
         <template slot-scope="scope">
           {{ getUserNameById(scope.row.userId) }}
         </template>
       </el-table-column>
-      <el-table-column label="Record Time" prop="recordTime" width="180px" align="center">
+      <el-table-column label="Record Time" prop="recordTime" width="190px" align="center">
         <template slot-scope="scope">
           {{ formatDate(scope.row.recordTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="Start Time" prop="startTime" width="180px" align="center">
+      <el-table-column label="Start Time" prop="startTime" width="190px" align="center">
         <template slot-scope="scope">
           {{ formatDate(scope.row.startTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="End Time" prop="endTime" width="180px" align="center">
+      <el-table-column label="End Time" prop="endTime" width="190px" align="center">
         <template slot-scope="scope">
           {{ formatDate(scope.row.endTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="Status" class-name="status-col" prop="statusId" width="120">
+      <el-table-column label="Status" class-name="status-col" prop="statusId" width="130">
         <template slot-scope="scope">
           <span :style="{ color: getStatusColor(scope.row.statusId) }">
             {{ getStatusText(scope.row.statusId) }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column label="Actions" align="center" width="220" class-name="small-padding fixed-width">
+      <el-table-column label="Actions" align="center" width="240" class-name="small-padding fixed-width">
         <template slot-scope="scope">
-          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">
-            Force Delete and resign
+          <el-button
+            v-if="scope.row.statusId !== 4"
+            size="mini"
+            type="danger"
+            @click="handleDeleteorReassign(scope.row)">
+            Delete or Reassign
           </el-button>
         </template>
       </el-table-column>
@@ -67,6 +71,29 @@
       style="margin-top: 20px; text-align: center;"
     />
 
+    <el-dialog :title="dialogTitle" :visible.sync="deleteDialogVisible" width="450px" >
+      <el-form>
+        <el-form-item label="Reason for Deletion" >
+          <el-select v-model="selectedReason" placeholder="Select Reason" style="width: 350px;">
+            <el-option label="Schedule Change" :value="'1; Schedule Change'"></el-option>
+            <el-option label="Equipment Failure" :value="'2; Equipment Failure'"></el-option>
+            <el-option label="Operation Error" :value="'3; Operation Error'"></el-option>
+            <el-option label="Emergency" :value="'4; Emergency'"></el-option>
+            <el-option label="Other" :value="'5; Other'"></el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-form-item v-if="selectedReason === '5; Other'" label="Specify Reason">
+          <el-input v-model="customReason" placeholder="Please enter reason" style="width: 350px;"></el-input>
+        </el-form-item>
+      </el-form>
+
+      <span slot="footer">
+        <el-button @click="deleteDialogVisible = false">Cancel</el-button>
+        <el-button type="primary" @click="confirmDelete">Confirm</el-button>
+      </span>
+    </el-dialog>
+
     <el-dialog title="Add New Order" :visible.sync="dialogFormVisible" width="500px">
       <el-form :model="newOrder" label-width="120px" style="margin-left: -30px;">
         <el-form-item label="Room" required>
@@ -78,10 +105,32 @@
           <el-input v-model="newOrder.userId" placeholder="Enter User ID" style="width: 100%;"></el-input>
         </el-form-item>
         <el-form-item label="Start Time" required>
-          <el-date-picker v-model="newOrder.startTime" type="datetime" placeholder="Select Start Time" style="width: 100%;"></el-date-picker>
+          <el-date-picker
+            v-model="testTime.date"
+            type="date"
+            placeholder="Select date"
+            style="width: 150px"
+          />
+          <el-time-select
+            v-model="testTime.time"
+            :picker-options="startTimeOptions"
+            placeholder="Select time"
+            style="width: 140px; margin-left: 10px;"
+          />
         </el-form-item>
         <el-form-item label="End Time" required>
-          <el-date-picker v-model="newOrder.endTime" type="datetime" placeholder="Select End Time" style="width: 100%;"></el-date-picker>
+          <el-date-picker
+              v-model="testTime.enddate"
+              type="date"
+              placeholder="Select date"
+              style="width: 150px"
+            />
+            <el-time-select
+              v-model="testTime.endtime"
+              :picker-options="endTimeOptions"
+              placeholder="Select time"
+              style="width: 140px; margin-left: 10px;"
+            />
         </el-form-item>
         <el-form-item label="Comment" >
           <el-input v-model="newOrder.comment" placeholder="Enter Comment(optional)"  type="textarea" :rows="4"></el-input>
@@ -96,10 +145,22 @@
 </template>
 
 <script>
-import { fetchOrders, deleteOrders, getNameByUid,  getRooms, createRecord} from '@/api/order'
+import { fetchOrders, deleteandReassignOrders, getNameByUid,  getRooms, createRecord, normalCancelByAdmin} from '@/api/order'
 import waves from '@/directive/waves'
 
 export default {
+  watch: {
+    'testTime.date'(val) {
+      if (!this.testTime.enddate || this.testTime.enddate !== val) {
+        this.testTime.enddate = val;
+      }
+    },
+    'testTime.enddate'(val) {
+      if (!this.testTime.date || this.testTime.date !== val) {
+        this.testTime.date = val;
+      }
+    }
+  },
   name: 'ComplexTable',
   directives: { waves },
   filters: {
@@ -121,6 +182,12 @@ export default {
         Room_Id: '',
       },
       dialogFormVisible: false,
+      testTime:{
+        date: '',
+        enddate: '',
+        time:'',
+        endtime:''
+      },
       newOrder: {
         roomId: '',
         userId: '',
@@ -135,8 +202,14 @@ export default {
       downloadLoading: false,
       pagination: {
       currentPage: 1,
-      pageSize: 10
-      }
+      pageSize: 20
+      },
+      deleteDialogVisible: false,
+      selectedReason: '',
+      currentDeleteRow: null,
+      customReason: '',
+      dialogTitle: 'Delete Record',
+      currentOperation: ''
     }
   },
   created() {
@@ -144,6 +217,31 @@ export default {
     this.getList()
   },
   methods: {
+    handleDeleteorReassign(row) {
+      this.$msgbox({
+        title: 'Choose Operation',
+        message: 'Please select the operation you wish to perform:',
+        showCancelButton: true,
+        showConfirmButton: true,
+        showClose: true,
+        distinguishCancelAndClose: true,
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Reassign',
+        type: 'warning',
+        confirmButtonClass: 'el-button--primary',
+        cancelButtonClass: 'el-button--primary',
+      }).then(action => {
+        if (action === 'confirm') {
+          this.handleDelete(row);
+        }
+      }).catch(action => {
+        if (action === 'cancel') {
+          this.handleDeleteandReassign(row);
+        } else if (action === 'close') {
+          this.$message.info('Operation canceled');
+        }
+      });
+    },
     formatDateToISO(date) {
       return date.toLocaleString('zh-CN', {
         year: 'numeric', month: '2-digit', day: '2-digit',
@@ -153,7 +251,7 @@ export default {
     },
     getStatusText(statusId) {
       switch (statusId) {
-        case 1: return 'Pending';
+        case 1: return 'Not Started';
         case 2: return 'Ongoing';
         case 3: return 'Done';
         case 4: return 'Cancelled';
@@ -185,13 +283,20 @@ export default {
         })
     },
     addRecord(){
-      this.newOrder.startTime = this.formatDateToISO(this.newOrder.startTime)
-      this.newOrder.endTime = this.formatDateToISO(this.newOrder.endTime)
+      const start = this.combinedStartTime
+      const end = this.combinedEndTime
+      if (!this.newOrder.roomId || !this.newOrder.userId || !start || !end) {
+        this.$message.error('Please fill in all required fields.');
+        return;
+      }
+      this.newOrder.startTime = this.formatDateToISO(this.combinedStartTime)
+      this.newOrder.endTime = this.formatDateToISO(this.combinedEndTime)
       createRecord(this.newOrder)
           .then(() => {
             this.getList();
             this.dialogFormVisible = false;
             this.$message.success('Record added successfully!');
+            this.testTime = {date: '',enddate: '',time:'',endtime:''}
           })
           .catch(error => {
             console.error('Error adding record:', error);
@@ -248,38 +353,59 @@ export default {
       this.total = this.filterList.length;
     },
 
+    handleDeleteandReassign(row) {
+      this.currentDeleteRow = row;
+      this.selectedReason = '';
+      this.customReason = '';
+      this.dialogTitle = 'Delete and Reassign Record';
+      this.currentOperation = 'deleteAndReassign';
+      this.deleteDialogVisible = true;
+    },
     handleDelete(row) {
-      this.$prompt('Please enter the reason for deletion', 'Reminder', {
+      this.currentDeleteRow = row;
+      this.selectedReason = '';
+      this.customReason = '';
+      this.dialogTitle = 'Delete Record';
+      this.currentOperation = 'delete';
+      this.deleteDialogVisible = true;
+    },
+    confirmDelete() {
+      let finalReason = this.selectedReason;
+
+      if (!finalReason) {
+        this.$message.error('Please select a reason.');
+        return;
+      }
+
+      if (finalReason === '5; Other') {
+        if (!this.customReason.trim()) {
+          this.$message.error('Please specify the reason.');
+          return;
+        }
+        finalReason = `5; ${this.customReason.trim()}`;
+      }
+
+      this.$confirm('Are you sure to delete this record?', 'Confirmation', {
         confirmButtonText: 'Yes',
         cancelButtonText: 'Cancel',
-        inputPattern: /.+/,
-        inputErrorMessage: 'Reason cannot be empty'
-      }).then(({ value }) => {
-        this.$confirm('Are you sure to delete this record?', 'Confirmation', {
-          confirmButtonText: 'Yes',
-          cancelButtonText: 'Cancel',
-          type: 'warning'
-        }).then(() => {
-          deleteOrders(row.id, value)
-            .then(() => {
-              this.getList();
-              this.$message.success('Record deleted successfully!');
-            })
-            .catch(error => {
-              console.error('Error deleting record:', error);
-              this.$message.error('Failed to delete record.');
-            });
-        }).catch(() => {
-          this.$message({
-            type: 'info',
-            message: 'Delete canceled'
+        type: 'warning'
+      }).then(() => {
+        const operationPromise = this.currentOperation === 'delete'
+          ? normalCancelByAdmin(this.currentDeleteRow.id, finalReason)
+          : deleteandReassignOrders(this.currentDeleteRow.id, finalReason);
+
+        operationPromise
+          .then(() => {
+            this.getList();
+            this.$message.success('Operation completed successfully!');
+            this.deleteDialogVisible = false;
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            this.$message.error('Failed to complete operation.');
           });
-        });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: 'Delete canceled'
-        });
+        this.$message.info('Operation canceled');
       });
     },
     handleDownload() {
@@ -322,9 +448,100 @@ export default {
     handleCurrentChange(val) {
       this.pagination.currentPage = val
       this.getList()
+    },
+    formatDateToYYYYMMDD(date) {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  },
+  computed: {
+    combinedStartTime() {
+      if (this.testTime.date && this.testTime.time) {
+        return new Date(`${this.formatDateToYYYYMMDD(this.testTime.date)} ${this.testTime.time}`);
+      }
+      return null;
+    },
+    combinedEndTime() {
+      if (this.testTime.enddate && this.testTime.endtime) {
+        return new Date(`${this.formatDateToYYYYMMDD(this.testTime.enddate)} ${this.testTime.endtime}`);
+      }
+      return null;
+    },
+    endTimeOptions() {
+      if (!this.testTime.time) {
+        return {
+          start: '08:30',
+          step: '00:30',
+          end: '22:00'
+        };
+      }
+
+      const [hourStr, minuteStr] = this.testTime.time.split(':');
+      let hour = parseInt(hourStr, 10);
+      let minute = parseInt(minuteStr, 10);
+
+      minute += 30;
+      if (minute >= 60) {
+        hour += 1;
+        minute -= 60;
+      }
+
+      const formattedHour = String(hour).padStart(2, '0');
+      const formattedMinute = String(minute).padStart(2, '0');
+      const newStart = `${formattedHour}:${formattedMinute}`;
+
+      return {
+        start: newStart,
+        step: '00:30',
+        end: '22:00'
+      };
+    },
+    startTimeOptions() {
+      if (!this.testTime.endtime) {
+        return {
+          start: '08:00',
+          step: '00:30',
+          end: '21:30'
+        };
+      }
+
+      const [hourStr, minuteStr] = this.testTime.endtime.split(':');
+      let hour = parseInt(hourStr, 10);
+      let minute = parseInt(minuteStr, 10);
+
+      minute -= 30;
+      if (minute < 0) {
+        hour -= 1;
+        minute += 60;
+      }
+
+      const formattedHour = String(hour).padStart(2, '0');
+      const formattedMinute = String(minute).padStart(2, '0');
+      const newEnd = `${formattedHour}:${formattedMinute}`;
+
+      return {
+        start: '08:00',
+        step: '00:30',
+        end: newEnd
+      };
     }
   }
 }
 </script>
 
+<style scoped>
 
+.el-table {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+.app-container {
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+</style>

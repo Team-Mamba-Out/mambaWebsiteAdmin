@@ -28,11 +28,12 @@ import LineChart from './components/LineChart'
 import TransactionTable from './components/TransactionTable'
 import TodoList from './components/TodoList'
 import BoxCard from './components/BoxCard'
+import {countOrdersByDayOfWeek} from '@/api/personal'
 
 const lineChartData = {
   messages: {
-    expectedData: [20, 19, 12, 14, 16, 13, 14],
-    actualData: [18, 16, 15, 10, 14, 15, 13]
+    studentCount: [],
+    teacherCount: []
   }
 }
 
@@ -51,9 +52,34 @@ export default {
       lineChartData: lineChartData.messages
     }
   },
+  created() {
+    this.getWeekData();
+  },
   methods: {
     handleSetLineChartData(type) {
       this.lineChartData = lineChartData['messages']
+    },
+    getWeekData(){
+      countOrdersByDayOfWeek()
+      .then(response => {
+        const data = response.data.data
+
+        const studentCount = []
+        const teacherCount = []
+
+        data.forEach(day => {
+          studentCount.push(day.studentOrders)
+          teacherCount.push(day.teacheOrders)
+        })
+
+        this.lineChartData = {
+          studentCount,
+          teacherCount
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error)
+      })
     }
   }
 }

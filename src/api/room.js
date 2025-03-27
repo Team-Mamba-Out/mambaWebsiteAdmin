@@ -78,3 +78,11 @@
       headers: { 'Content-Type': 'application/json' }
     })
   }
+
+  export const getRoomUtilization = (rangeType) => {
+    return api.get('/admin/roomReport',{ params: { rangeType } })
+  }
+
+  export const getFreeMaintainTime = (roomId) => {
+    return api.get('/admin/getFreeMaintainTime',{ params: { roomId } })
+  }

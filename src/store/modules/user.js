@@ -1,13 +1,18 @@
-import { login, logout, getInfo } from '@/api/user'
+import {  logout} from '@/api/user'
+import { verifyCode, getUserInfo } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import router, { resetRouter } from '@/router'
 
 const state = {
   token: getToken(),
   name: '',
+  email:'',
+  uid:0,
   avatar: '',
   introduction: '',
-  roles: []
+  roles: [],
+  role:'',
+  phone:''
 }
 
 const mutations = {
@@ -25,19 +30,35 @@ const mutations = {
   },
   SET_ROLES: (state, roles) => {
     state.roles = roles
+  },
+  SET_ROLE: (state, role) => {
+    state.role = role
+  },
+  SET_EMAIL: (state, email) => {
+    state.email = email
+  },
+  SET_UID:(state,uid)=>{
+    state.uid=uid
+  },
+  SET_PHONE:(state,phone)=>{
+    state.phone=phone
   }
 }
 
 const actions = {
   // user login
-  login({ commit }, userInfo) {
-    const { username, password } = userInfo
+  login({ commit }, loginForm) {
+    const { email, code } = loginForm
     return new Promise((resolve, reject) => {
-      login({ username: username.trim(), password: password }).then(response => {
+      verifyCode(email.trim(),code.trim()).then(response => {
         const { data } = response
-        commit('SET_TOKEN', data.token)
-        setToken(data.token)
-        resolve()
+        if (data.code === 200) {
+          commit('SET_TOKEN', data.data)
+          setToken(data.data)
+          resolve()
+        } else {
+          reject(new Error(data.message || 'Login failed'))
+        }
       }).catch(error => {
         reject(error)
       })
@@ -47,24 +68,25 @@ const actions = {
   // get user info
   getInfo({ commit, state }) {
     return new Promise((resolve, reject) => {
-      getInfo(state.token).then(response => {
-        const { data } = response
+      getUserInfo(state.token).then(response => {
+        let  data  = response.data.data
 
         if (!data) {
           reject('Verification failed, please Login again.')
         }
 
-        const { roles, name, avatar, introduction } = data
+        const { role, name, email, uid,phone } = data
+        console.log(data);
 
-        // roles must be a non-empty array
-        if (!roles || roles.length <= 0) {
-          reject('getInfo: roles must be a non-null array!')
-        }
 
+        var roles = ['admin']
+        data.roles=roles
         commit('SET_ROLES', roles)
+        commit('SET_ROLE', role)
         commit('SET_NAME', name)
-        commit('SET_AVATAR', avatar)
-        commit('SET_INTRODUCTION', introduction)
+        commit('SET_EMAIL', email)
+        commit('SET_UID', uid)
+        commit('SET_PHONE',phone)
         resolve(data)
       }).catch(error => {
         reject(error)

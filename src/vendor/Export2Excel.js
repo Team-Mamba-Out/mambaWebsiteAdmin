@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { saveAs } from 'file-saver'
-import XLSX from 'xlsx'
+import XLSX from 'xlsx-style-fixed'
 
 function generateArray(table) {
   var out = [];
@@ -85,14 +85,30 @@ function sheet_from_array_of_arrays(data, opts) {
         r: R
       });
 
-      if (typeof cell.v === 'number') cell.t = 'n';
+      if (typeof cell.v === 'number') {
+        cell.t = 'n'
+        cell.s = {
+          alignment: {
+            horizontal: 'center',
+            vertical: 'center'
+          }
+        };
+      }
       else if (typeof cell.v === 'boolean') cell.t = 'b';
       else if (cell.v instanceof Date) {
         cell.t = 'n';
         cell.z = XLSX.SSF._table[14];
         cell.v = datenum(cell.v);
-      } else cell.t = 's';
-
+      } else {
+        cell.t = 's';
+        cell.s = {
+          alignment: {
+            wrapText: true,
+            horizontal: 'left',
+            vertical: 'center'
+          }
+        };
+      }
       ws[cell_ref] = cell;
     }
   }
@@ -174,34 +190,28 @@ export function export_json_to_excel({
   }
 
   if (autoWidth) {
-    /*设置worksheet每列的最大宽度*/
     const colWidth = data.map(row => row.map(val => {
-      /*先判断是否为null/undefined*/
-      if (val == null) {
-        return {
-          'wch': 10
-        };
-      }
-      /*再判断是否为中文*/
-      else if (val.toString().charCodeAt(0) > 255) {
-        return {
-          'wch': val.toString().length * 2
-        };
-      } else {
-        return {
-          'wch': val.toString().length
-        };
-      }
-    }))
-    /*以第一行为初始值*/
+      if (val == null) return { wch: 10 };
+
+      const lines = val.toString().split('\n');
+      const maxLineLength = Math.max(...lines.map(line => {
+        return [...line].reduce((acc, char) => {
+          return acc + (char.charCodeAt(0) > 255 ? 2 : 1);
+        }, 0);
+      }));
+
+      return { wch: maxLineLength + 2 };
+    }));
+
     let result = colWidth[0];
     for (let i = 1; i < colWidth.length; i++) {
       for (let j = 0; j < colWidth[i].length; j++) {
-        if (result[j]['wch'] < colWidth[i][j]['wch']) {
-          result[j]['wch'] = colWidth[i][j]['wch'];
+        if (!result[j] || result[j].wch < colWidth[i][j].wch) {
+          result[j] = colWidth[i][j];
         }
       }
     }
+
     ws['!cols'] = result;
   }
 

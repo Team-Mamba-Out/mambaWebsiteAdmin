@@ -61,7 +61,7 @@ export default {
       this.chart = echarts.init(this.$el, 'macarons')
       this.setOptions(this.chartData)
     },
-    setOptions({ expectedData, actualData } = {}) {
+    setOptions({ studentCount, teacherCount } = {}) {
       this.chart.setOption({
         title: {
           text: 'Orders Quantity and Categories This Week',
@@ -114,7 +114,7 @@ export default {
           },
           smooth: true,
           type: 'line',
-          data: expectedData,
+          data: studentCount,
           animationDuration: 2800,
           animationEasing: 'cubicInOut'
         },
@@ -134,7 +134,7 @@ export default {
               }
             }
           },
-          data: actualData,
+          data: teacherCount,
           animationDuration: 2800,
           animationEasing: 'quadraticOut'
         }]
